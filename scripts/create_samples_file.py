@@ -3,6 +3,7 @@
 import os
 import csv
 import xml.etree.ElementTree as ET
+import hashlib
 from Bio import Entrez
 Entrez.email = 'jason.stajich@ucr.edu'
 from joblib import Memory
@@ -13,6 +14,12 @@ if not os.path.exists(cachedir):
     os.makedirs(cachedir)
 memory = Memory(cachedir, verbose=0)
 
+
+#@memory.cache
+def get_locus_from_asm(assembly_id):
+    mdsum = hashlib.md5(assembly_id.encode('utf-8')).hexdigest().upper()
+    return 'F' + mdsum[-7:]
+    
 @memory.cache
 def get_bioproject_prefix(BIOPROJECTID):
     LOCUSTAG = ""
@@ -85,15 +92,20 @@ fields.append('LOCUSTAG')
 
 # add LOCUSTAG to the dictionary
 n = 1
+seen = {}
 for asm in accession_dict:
     bioproject = accession_dict[asm][2]
     
-    locus = get_bioproject_prefix(bioproject)
-    print(f'{bioproject} -> {locus}')
-    if len(locus) == 0:
-        locus = f'FUN{n:03}'   # use strain as prefix
-        n += 1
-    locus = f'f{locus}'
+#    locus = get_bioproject_prefix(bioproject)    
+#    print(f'{bioproject} -> {locus}')
+#    if len(locus) == 0:
+#        locus = f'FUN{n:03}'   # use strain as prefix
+#        n += 1
+#    locus = f'f{locus}'    
+    locus = get_locus_from_asm(asm)
+    if locus in seen:
+        print(f'got a repeat locus: {locus} for asm_ids {asm} and {seen[locus]}')
+    seen[locus] = asm
     accession_dict[asm].append(locus)
     
 with open(outsamples, 'wt') as f:
