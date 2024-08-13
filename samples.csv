@@ -1,4 +1,4 @@
-SPECIES,STRAIN,BIOPROJECT,NCBI_TAXONID,BUSCO_LINEAGE,PHYLUM,SUBPHYLUM,CLASS,SUBCLASS,ORDER,FAMILY,GENUS,SPECIES,LOCUSTAG
+ASMID,SPECIES,STRAIN,BIOPROJECT,NCBI_TAXONID,BUSCO_LINEAGE,PHYLUM,SUBPHYLUM,CLASS,SUBCLASS,ORDER,FAMILY,GENUS,SPECIES,LOCUSTAG
 GCF_010015735.1_Aaoar1,Aaosphaeria arxii CBS 175.79,CBS 175.79,PRJNA234399,1450172,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,,Aaosphaeria,Aaosphaeria arxii,FF5840CF
 GCA_022813625.1_ASM2281362v1,Aaosphaeria pasadenensis,FJI-L9-BK-P1,PRJNA800051,3025424,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,,Aaosphaeria,Aaosphaeria pasadenensis,F2EE6837
 GCA_022606235.1_Abobie1,Abortiporus biennis,CIRM-BRFM 1778,PRJNA444028,137743,dikarya,Basidiomycota,,Agaricomycetes,,Polyporales,Podoscyphaceae,Abortiporus,Abortiporus biennis,F6291E57
@@ -18,7 +18,7 @@ GCA_033296875.1_Achma1,Achaetomium macrosporum,CBS 532.94,PRJNA441724,79813,dika
 GCA_030579395.1_ASM3057939v1,Aciculoconidium aculeatum,NRRL YB-4298,PRJNA736342,43968,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Debaryomycetaceae,Aciculoconidium,Aciculoconidium aculeatum,F6D375A1
 GCA_000222935.2_AciTa_1.0,Aciculosporium take MAFF-241224,MAFF-241224,PRJNA67241,1036760,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Clavicipitaceae,Aciculosporium,Aciculosporium take,F4FC39BC
 GCA_019670975.1_ASM1967097v1,Acidiella bohemica,SYSU C17045,PRJNA725650,1176733,dikarya,Ascomycota,,Dothideomycetes,,Mycosphaerellales,Teratosphaeriaceae,Acidiella,Acidiella bohemica,F686C401
-GCA_003545705.1_ASM354570v1,Acidomyces sp. 'richmondensis',FRIK2901,PRJNA486357,245562,dikarya,Ascomycota,,Dothideomycetes,,Mycosphaerellales,Teratosphaeriaceae,Acidomyces,Acidomyces sp. 'richmondensis',F65D1F27
+GCA_003545705.1_ASM354570v1,Acidomyces sp. richmondensis,FRIK2901,PRJNA486357,245562,dikarya,Ascomycota,,Dothideomycetes,,Mycosphaerellales,Teratosphaeriaceae,Acidomyces,Acidomyces sp. richmondensis,F65D1F27
 GCA_021347865.1_ASM2134786v1,Acremonium sp. CBMAI 1973,CBMAI 1973,PRJNA588795,2666182,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,,Acremonium,Acremonium sp. CBMAI 1973,FD430BD2
 GCA_020087035.1_ASM2008703v1,Acremonium sp. FKII-L8-BK-P5,FKII-L8-BK-P5,PRJNA644637,2778101,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,,Acremonium,Acremonium sp. FKII-L8-BK-P5,F6B21F09
 GCA_028476805.1_ASM2847680v1,Acrocalymma vagum,A21,PRJNA921830,1589764,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,Morosphaeriaceae,Acrocalymma,Acrocalymma vagum,F289AF5C
@@ -88,7 +88,7 @@ GCA_029783965.1_RDWU_Aporii_p.ctg,Alternaria porri,Apn-Nashik,PRJNA916367,48098,
 GCF_024291825.1_ASM2429182v1,Alternaria postmessia,BMP 2775,PRJNA706766,1187938,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,Pleosporaceae,Alternaria,Alternaria postmessia,FBD32A45
 GCF_020736505.1_Altro1,Alternaria rosae,MPI-PUGE-AT-0040,PRJNA347188,1187941,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,Pleosporaceae,Alternaria,Alternaria rosae,FF42A38D
 GCA_002952155.1_ASM295215v1,Alternaria solani,NL03003,PRJNA391093,48100,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,Pleosporaceae,Alternaria,Alternaria solani,F1B3B896
-GCA_024321975.1_ASM2432197v1,Alternaria sp. 'sect. Undifilum',W740-01,PRJNA776965,2896643,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,Pleosporaceae,Alternaria,Alternaria sp. 'sect. Undifilum',FF34768C
+GCA_024321975.1_ASM2432197v1,Alternaria sp. sect. Undifilum,W740-01,PRJNA776965,2896643,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,Pleosporaceae,Alternaria,Alternaria sp. sect. Undifilum,FF34768C
 GCA_023758125.1_ASM2375812v1,Alternaria sp. Ai002NY15,Ai002NY15,PRJNA706766,2817039,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,Pleosporaceae,Alternaria,Alternaria sp. Ai002NY15,F87F2AF1
 GCA_023758005.1_ASM2375800v1,Alternaria sp. BMP 0032,BMP 0032,PRJNA706766,2817042,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,Pleosporaceae,Alternaria,Alternaria sp. BMP 0032,F7781614
 GCA_023758145.1_ASM2375814v1,Alternaria sp. BMP 2799,BMP 2799,PRJNA706766,2817041,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,Pleosporaceae,Alternaria,Alternaria sp. BMP 2799,FCCE8A22
@@ -434,7 +434,7 @@ GCA_025592505.1_ASM2559250v1,Aspergillus sclerotiorum,IFST Ascl1,PRJNA765789,138
 GCA_009193525.1_Aspser1,Aspergillus sergii,CBS 130017,PRJNA333911,1034303,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus sergii,F3CCFD4D
 GCA_008274985.1_ASM827498v1,Aspergillus sojae,SMF134,PRJNA517748,41058,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus sojae,F5FB0698
 GCA_963379335.1_SRR14198834_bin.1_MetaWRAP_v1.2.1_MAG,Aspergillus sp.,,PRJEB47281,5065,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus sp.,F866FB1A
-GCA_019976455.1_ASM1997645v1,Aspergillus sp. 'subgen. Cremei',IBT 35662,PRJNA698796,2894562,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus sp. 'subgen. Cremei',F636F195
+GCA_019976455.1_ASM1997645v1,Aspergillus sp. subgen. Cremei,IBT 35662,PRJNA698796,2894562,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus sp. subgen. Cremei,F636F195
 GCA_016880755.1_ASM1688075v1,Aspergillus sp. 2663,2663,PRJNA592895,2681688,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus sp. 2663,F245D303
 GCA_023625275.1_ASM2362527v1,Aspergillus sp. 2NF922,2NF922,PRJNA833221,2940428,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus sp. 2NF922,FE22679B
 GCA_023625115.1_ASM2362511v1,Aspergillus sp. 2NF923,2NF923,PRJNA833221,2940435,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus sp. 2NF923,FCAFB5CF
@@ -1234,7 +1234,7 @@ GCA_025766245.1_Coemoj1,Coemansia mojavensis,RSA 71,PRJNA364360,4864,fungi,Zoopa
 GCA_027579095.1_UCR_ConaCBS109366_1.0,Coemansia nantahalensis,CBS 109366,PRJNA676422,2789366,fungi,Zoopagomycota,,Kickxellomycetes,,Kickxellales,Kickxellaceae,Coemansia,Coemansia nantahalensis,F14E65AF
 GCA_027579255.1_UCR_CopeBCRC34297_1.0,Coemansia pectinata,BCRC 34297,PRJNA581598,1052879,fungi,Zoopagomycota,,Kickxellomycetes,,Kickxellales,Kickxellaceae,Coemansia,Coemansia pectinata,FA99CC43
 GCA_002705745.1_Coere1,Coemansia reversa NRRL 1564,NRRL 1564,PRJNA68631,763665,fungi,Zoopagomycota,,Kickxellomycetes,,Kickxellales,Kickxellaceae,Coemansia,Coemansia reversa,F35EFF3E
-GCA_027579295.1_UCR_CofoNRRL5531T_1.0,Coemansia sp. 'formosensis',NRRL 5531,PRJNA535812,327750,fungi,Zoopagomycota,,Kickxellomycetes,,Kickxellales,Kickxellaceae,Coemansia,Coemansia sp. 'formosensis',FD29B932
+GCA_027579295.1_UCR_CofoNRRL5531T_1.0,Coemansia sp. formosensis,NRRL 5531,PRJNA535812,327750,fungi,Zoopagomycota,,Kickxellomycetes,,Kickxellales,Kickxellaceae,Coemansia,Coemansia sp. formosensis,FD29B932
 GCA_027579235.1_UCR_CoemBCRC34301_1.0,Coemansia sp. BCRC 34301,BCRC 34301,PRJNA581599,2663920,fungi,Zoopagomycota,,Kickxellomycetes,,Kickxellales,Kickxellaceae,Coemansia,Coemansia sp. BCRC 34301,F1DEA344
 GCA_027579215.1_UCR_CoemBCRC34490_1.0,Coemansia sp. BCRC 34490,BCRC 34490,PRJNA651137,2761420,fungi,Zoopagomycota,,Kickxellomycetes,,Kickxellales,Kickxellaceae,Coemansia,Coemansia sp. BCRC 34490,F6568F62
 GCA_027579075.1_UCR_CoemBCRC34962_1.0,Coemansia sp. BCRC 34962,BCRC 34962,PRJNA677669,2789224,fungi,Zoopagomycota,,Kickxellomycetes,,Kickxellales,Kickxellaceae,Coemansia,Coemansia sp. BCRC 34962,F3D51D57
@@ -1675,7 +1675,7 @@ GCA_036971345.1_ASM3697134v1,Dactylellina drechsleri,CGMCC 3.6773,PRJNA791178,28
 GCA_031310005.1_ASM3131000v1,Dactylellina haptotyla,YMF1.03409,PRJNA923037,430498,dikarya,Ascomycota,,Orbiliomycetes,,Orbiliales,Orbiliaceae,Dactylellina,Dactylellina haptotyla,F434605D
 GCA_036971365.1_ASM3697136v1,Dactylellina leptospora,CGMCC 3.6775,PRJNA791178,430499,dikarya,Ascomycota,,Orbiliomycetes,,Orbiliales,Orbiliaceae,Dactylellina,Dactylellina leptospora,F4BE1DDF
 GCA_036971385.1_ASM3697138v1,Dactylellina parvicollis,XJ03-136-1,PRJNA791178,430493,dikarya,Ascomycota,,Orbiliomycetes,,Orbiliales,Orbiliaceae,Dactylellina,Dactylellina parvicollis,F8C506F3
-GCA_036971435.1_ASM3697143v1,Dactylellina sp. 'tibetensis',SQ 2179,PRJNA791178,2906646,dikarya,Ascomycota,,Orbiliomycetes,,Orbiliales,Orbiliaceae,Dactylellina,Dactylellina sp. 'tibetensis',FD5FD6D7
+GCA_036971435.1_ASM3697143v1,Dactylellina sp. tibetensis,SQ 2179,PRJNA791178,2906646,dikarya,Ascomycota,,Orbiliomycetes,,Orbiliales,Orbiliaceae,Dactylellina,Dactylellina sp. tibetensis,FD5FD6D7
 GCA_029931735.1_ASM2993173v1,Dactylonectria alcacerensis,CT-6,PRJNA905207,1079268,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Dactylonectria,Dactylonectria alcacerensis,F94924DA
 GCA_020744375.1_Daces1,Dactylonectria estremocensis,MPI-CAGE-AT-0021,PRJNA370196,1079267,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Dactylonectria,Dactylonectria estremocensis,F93BC72E
 GCA_020744425.1_Dacma1,Dactylonectria macrodidyma,MPI-CAGE-AT-0147,PRJNA500112,307937,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Dactylonectria,Dactylonectria macrodidyma,F08AF07C
@@ -1860,7 +1860,7 @@ GCA_034640345.1_ASM3464034v1,Drechslera avenae,nq10,PRJNA987760,33199,dikarya,As
 GCA_036971555.1_ASM3697155v1,Drechslerella coelobrocha,CGMCC 3.6772,PRJNA791178,314128,dikarya,Ascomycota,,Orbiliomycetes,,Orbiliales,Orbiliaceae,Drechslerella,Drechslerella coelobrocha,FD736CD5
 GCA_020064725.1_ASM2006472v1,Drechslerella dactyloides,CGMCC3.20198,PRJNA723920,74499,dikarya,Ascomycota,,Orbiliomycetes,,Orbiliales,Orbiliaceae,Drechslerella,Drechslerella dactyloides,FABD1EAA
 GCA_000525045.1_DREv1,Drechslerella stenobrocha 248,248,PRJNA67941,1043628,dikarya,Ascomycota,,Orbiliomycetes,,Orbiliales,Orbiliaceae,Drechslerella,Drechslerella stenobrocha,F5DDF961
-GCF_022702325.1_ASM2270232v1,Drepanopeziza brunnea f. sp. 'multigermtubi',214-2,PRJNA800111,698441,dikarya,Ascomycota,,Leotiomycetes,,Helotiales,Drepanopezizaceae,Drepanopeziza,Drepanopeziza brunnea,F1B7058F
+GCF_022702325.1_ASM2270232v1,Drepanopeziza brunnea f. sp. multigermtubi,214-2,PRJNA800111,698441,dikarya,Ascomycota,,Leotiomycetes,,Helotiales,Drepanopezizaceae,Drepanopeziza,Drepanopeziza brunnea,F1B7058F
 GCA_002778125.1_ASM277812v1,Dryadomyces quercivorus,CBS 122982,PRJNA395605,637633,dikarya,Ascomycota,,Sordariomycetes,,Ophiostomatales,Ophiostomataceae,Dryadomyces,Dryadomyces quercivorus,F74EAAC6
 GCA_002215975.1_ASM221597v1,Dryadomyces quercus-mongolicae,KACC44405,PRJNA389222,1423150,dikarya,Ascomycota,,Sordariomycetes,,Ophiostomatales,Ophiostomataceae,Dryadomyces,Dryadomyces quercus-mongolicae,FE9FC1BF
 GCA_002778055.1_ASM277805v1,Dryadomyces sulphureus,CBS 380.68,PRJNA395605,490887,dikarya,Ascomycota,,Sordariomycetes,,Ophiostomatales,Ophiostomataceae,Dryadomyces,Dryadomyces sulphureus,F64936E8
@@ -2203,7 +2203,7 @@ GCA_019843635.1_ASM1984363v1,Fusarium siculi,KOD 1856,PRJNA565749,2563089,dikary
 GCF_023522795.1_NDSU_Fsol_1.0,Fusarium solani,SB1,PRJNA819387,169388,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium solani,F5701D2E
 GCA_023101225.1_ASM2310122v1,Fusarium solani-melongenae,CRI 24-3,PRJNA765467,2747967,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium solani-melongenae,F1D98AE3
 GCA_017579625.1_ASM1757962v1,Fusarium sororula,FCC 5425,PRJNA663135,1604333,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium sororula,F02F8254
-GCA_014885045.1_ASM1488504v1,Fusarium sp. 'flavolapis',MK7,PRJNA665233,2776169,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium sp. 'flavolapis',FA419014
+GCA_014885045.1_ASM1488504v1,Fusarium sp. flavolapis,MK7,PRJNA665233,2776169,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium sp. flavolapis,FA419014
 GCA_014884825.1_ASM1488482v1,Fusarium sp. 190-020-2,190-020-2,PRJNA658816,2765005,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium sp. 190-020-2,FC0EE6A5
 GCA_003947015.1_NRRL62590.SPAdes,Fusarium sp. AF-6,NRRL62590,PRJNA389173,1325737,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium sp. AF-6,F712D867
 GCA_013416785.2_ASM1341678v2,Fusarium sp. BWC1,BWC1,PRJNA533882,2838793,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium sp. BWC1,F9909707
@@ -2414,7 +2414,7 @@ GCA_040802945.1_ASM4080294v1,Gyromitra parma,ACD0610,PRJNA994929,3063983,dikarya
 GCA_040802985.1_ASM4080298v1,Gyromitra perlata,ACD0608,PRJNA994929,1385994,dikarya,Ascomycota,,Pezizomycetes,,Pezizales,Discinaceae,Gyromitra,Gyromitra perlata,F8C2F75E
 GCA_040803505.1_ASM4080350v1,Gyromitra recurva,ACD0538,PRJNA994929,2873843,dikarya,Ascomycota,,Pezizomycetes,,Pezizales,Discinaceae,Gyromitra,Gyromitra recurva,FD054B29
 GCA_040803245.1_ASM4080324v1,Gyromitra sichuanensis,CUP-CH002522,PRJNA994929,3063984,dikarya,Ascomycota,,Pezizomycetes,,Pezizales,Discinaceae,Gyromitra,Gyromitra sichuanensis,FBBD7369
-GCA_040802825.1_ASM4080282v1,Gyromitra sp. 'persicula',MICH346493,PRJNA994929,3120226,dikarya,Ascomycota,,Pezizomycetes,,Pezizales,Discinaceae,Gyromitra,Gyromitra sp. 'persicula',F1BED1D7
+GCA_040802825.1_ASM4080282v1,Gyromitra sp. persicula,MICH346493,PRJNA994929,3120226,dikarya,Ascomycota,,Pezizomycetes,,Pezizales,Discinaceae,Gyromitra,Gyromitra sp. persicula,F1BED1D7
 GCA_040802385.1_ASM4080238v1,Gyromitra sp. 13 AD-2024,MICH346255,PRJNA994929,3120042,dikarya,Ascomycota,,Pezizomycetes,,Pezizales,Discinaceae,Gyromitra,Gyromitra sp. 13 AD-2024,F0820830
 GCA_040803605.1_ASM4080360v1,Gyromitra sp. 2 AD-2023,ACD0484,PRJNA994929,3063971,dikarya,Ascomycota,,Pezizomycetes,,Pezizales,Discinaceae,Gyromitra,Gyromitra sp. 2 AD-2023,F401AB16
 GCA_040803515.1_ASM4080351v1,Gyromitra sp. 3 AD-2023,ACD0548,PRJNA994929,3063972,dikarya,Ascomycota,,Pezizomycetes,,Pezizales,Discinaceae,Gyromitra,Gyromitra sp. 3 AD-2023,FCA2B3E3
@@ -2779,7 +2779,7 @@ GCA_900074715.1_LAME0,Lachancea meyersii CBS 8951,,PRJEB12931,1266667,dikarya,As
 GCA_900074745.1_LAMI0,Lachancea mirantina,,PRJEB12932,1230905,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Lachancea,Lachancea mirantina,FD3F6A80
 GCA_900074755.1_LANO0,Lachancea nothofagi CBS 11611,,PRJEB12933,1266666,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Lachancea,Lachancea nothofagi,F8EC8D92
 GCA_030557885.1_ASM3055788v1,Lachancea quebecensis,yHDO360,PRJNA736342,1654605,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Lachancea,Lachancea quebecensis,F20137B9
-GCA_900074735.1_LAFA0,Lachancea sp. 'fantastica',,PRJEB12929,1230904,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Lachancea,Lachancea sp. 'fantastica',F9C995D7
+GCA_900074735.1_LAFA0,Lachancea sp. fantastica,,PRJEB12929,1230904,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Lachancea,Lachancea sp. fantastica,F9C995D7
 GCA_030562185.1_ASM3056218v1,Lachancea sp. yHQL494,yHQL494,PRJNA736342,2866345,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Lachancea,Lachancea sp. yHQL494,FFEB49CD
 GCF_000142805.1_ASM14280v1,Lachancea thermotolerans CBS 6340,CBS 6340,PRJNA12499,559295,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Lachancea,Lachancea thermotolerans,F1367751
 GCA_030580015.1_ASM3058001v1,Lachancea waltii,NRRL Y-8285,PRJNA736342,4914,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Lachancea,Lachancea waltii,F07CB1B6
@@ -3236,7 +3236,7 @@ GCF_001500285.1_Phisc1,Mollisia scopiformis,CBS 120377,PRJNA262390,149040,dikary
 GCA_018806995.1_ASM1880699v1,Monascus pilosus,MS-1,PRJNA718072,89488,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Monascus,Monascus pilosus,F3728279
 GCA_025999795.1_ASM2599979v1,Monascus purpureus,KUPM5,PRJDB11993,5098,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Monascus,Monascus purpureus,F3BAADD5
 GCA_002976275.1_ASM297627v1,Monascus ruber,FWB13,PRJNA433431,89489,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Monascus,Monascus ruber,FB6A8A6C
-GCA_003971905.1_ASM397190v1,Moniliella sp. 'wahieum',ATCC MYA-4962,PRJNA433019,2020907,dikarya,Basidiomycota,,Moniliellomycetes,,Moniliellales,Moniliellaceae,Moniliella,Moniliella sp. 'wahieum',F5DAAAF3
+GCA_003971905.1_ASM397190v1,Moniliella sp. wahieum,ATCC MYA-4962,PRJNA433019,2020907,dikarya,Basidiomycota,,Moniliellomycetes,,Moniliellales,Moniliellaceae,Moniliella,Moniliella sp. wahieum,F5DAAAF3
 GCA_002162555.1_ASM216255v1,Monilinia aucupariae,LMK 733,PRJNA277973,61194,dikarya,Ascomycota,,Leotiomycetes,,Helotiales,Sclerotiniaceae,Monilinia,Monilinia aucupariae,F61C370B
 GCA_008692225.1_ASM869222v1,Monilinia fructicola,Mfrc123,PRJNA523200,38448,dikarya,Ascomycota,,Leotiomycetes,,Helotiales,Sclerotiniaceae,Monilinia,Monilinia fructicola,F18A2215
 GCA_003260565.1_ASM326056v1,Monilinia fructigena,Mfrg269,PRJNA470675,38457,dikarya,Ascomycota,,Leotiomycetes,,Helotiales,Sclerotiniaceae,Monilinia,Monilinia fructigena,FEB4AF10
@@ -3545,7 +3545,7 @@ GCF_033439725.1_Gelte1,Neurospora tetraspora,CBS 560.94,PRJNA370048,94610,dikary
 GCA_038089155.1_TH10119-Tylopilus-exiguus,Nevesoporus exiguus,G4408,PRJNA1022813,1115738,dikarya,Basidiomycota,,Agaricomycetes,,Boletales,Boletaceae,Nevesoporus,Nevesoporus exiguus,F1752D04
 GCA_036937055.1_ASM3693705v1,Nidula microcarpa,FLAS-F-66534,PRJNA930910,2838327,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Nidulariaceae,Nidula,Nidula microcarpa,F2D77282
 GCA_036937135.1_ASM3693713v1,Nidula niveotomentosa,PDD-112098,PRJNA930910,380643,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Nidulariaceae,Nidula,Nidula niveotomentosa,F2865F51
-GCA_036937195.1_ASM3693719v1,"Nidularia pulvinata (Schwein.) Fr., 1823",FLAS-F-66545,PRJNA930910,1081941,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Nidulariaceae,Nidularia,"Nidularia pulvinata (Schwein.) Fr., 1823",F6AEDA39
+GCA_036937195.1_ASM3693719v1,Nidularia pulvinata,FLAS-F-66545,PRJNA930910,1081941,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Nidulariaceae,Nidularia,Nidularia pulvinata,F6AEDA39
 GCA_036937115.1_ASM3693711v1,Nidularia sp. FH-822889,FH-822889,PRJNA930910,3026959,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Nidulariaceae,Nidularia,Nidularia sp. FH-822889,F45D4AD7
 GCA_019925105.1_ASM1992510v1,Niebla homalea,fmnib47,PRJNA707213,643219,dikarya,Ascomycota,,Lecanoromycetes,,Lecanorales,Ramalinaceae,Niebla,Niebla homalea,FA726085
 GCA_001007845.1_E202H_v1,Nigrograna mackinnonii,E5202H,PRJNA187080,1489893,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,Nigrogranaceae,Nigrograna,Nigrograna mackinnonii,FEDC52AB
@@ -4120,7 +4120,7 @@ GCF_001477545.1_Pneu_cari_B80_V3,Pneumocystis carinii B80,B80,PRJNA223511;PRJNA2
 GCF_001477535.1_Pneu_jiro_RU7_V2,Pneumocystis jirovecii RU7,RU7,PRJNA223510;PRJNA223519,1408657,dikarya,Ascomycota,,Pneumocystomycetes,,Pneumocystales,Pneumocystaceae,Pneumocystis,Pneumocystis jirovecii,F0371FFB
 GCF_000349005.2_Pneumo_murina_B123_V4,Pneumocystis murina B123,B123,PRJNA223519;PRJNA70803,1069680,dikarya,Ascomycota,,Pneumocystomycetes,,Pneumocystales,Pneumocystaceae,Pneumocystis,Pneumocystis murina,FF328DEF
 GCA_017311285.1_Pneumocystis_oryctolagi_MERGE_1.1,Pneumocystis oryctolagi,RABM,PRJNA632560,42067,dikarya,Ascomycota,,Pneumocystomycetes,,Pneumocystales,Pneumocystaceae,Pneumocystis,Pneumocystis oryctolagi,F5656E5D
-GCA_018127085.1_P2C.v1.0,Pneumocystis sp. 'macacae',P2C,PRJNA632025,2698480,dikarya,Ascomycota,,Pneumocystomycetes,,Pneumocystales,Pneumocystaceae,Pneumocystis,Pneumocystis sp. 'macacae',F7A252F3
+GCA_018127085.1_P2C.v1.0,Pneumocystis sp. macacae,P2C,PRJNA632025,2698480,dikarya,Ascomycota,,Pneumocystomycetes,,Pneumocystales,Pneumocystaceae,Pneumocystis,Pneumocystis sp. macacae,F7A252F3
 GCA_017301755.1_ASM1730175v1,Pneumocystis wakefieldiae,2A,PRJNA632570,38082,dikarya,Ascomycota,,Pneumocystomycetes,,Pneumocystales,Pneumocystaceae,Pneumocystis,Pneumocystis wakefieldiae,FADCB796
 GCF_001653235.2_ASM165323v2,Pochonia chlamydosporia 170,170,PRJNA310157,1380566,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Clavicipitaceae,Pochonia,Pochonia chlamydosporia,F54F4657
 GCA_018524395.1_ASM1852439v1,Podaxis carcinomalis,LINN1287.8,PRJNA681736,2841190,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Agaricaceae,Podaxis,Podaxis carcinomalis,FD4D3C7D
@@ -4710,7 +4710,7 @@ GCA_025094145.1_Spifus1,Spinellus fusiger,NRRL 22323,PRJNA332244,101115,mucoromy
 GCA_014805645.1_ASM1480564v1,Spiromastix sp. SCSIO F190,SCSIO F190,PRJNA598808,2695271,dikarya,Ascomycota,,Eurotiomycetes,,Onygenales,Spiromastigoidaceae,Spiromastigoides,Spiromastix sp. SCSIO F190,F2446B61
 GCA_027478575.1_UCR_SaspiralisRSA2271_1.0,Spiromyces aspiralis,RSA 2271,PRJNA519295,68401,fungi,Zoopagomycota,,Kickxellomycetes,,Kickxellales,Kickxellaceae,Spiromyces,Spiromyces aspiralis,F5C985FA
 GCF_000182565.1_S_punctatus_V1,Spizellomyces punctatus DAOM BR117,DAOM BR117,PRJNA37881;PRJNA71873,645134,fungi,Chytridiomycota,,Chytridiomycetes,,Spizellomycetales,Spizellomycetaceae,Spizellomyces,Spizellomyces punctatus,F931F230
-GCA_006535965.1_ASM653596v1,Spizellomyces sp. 'palustris',CBS 455.65,PRJNA453746,117820,fungi,Chytridiomycota,,Chytridiomycetes,,Spizellomycetales,Spizellomycetaceae,Spizellomyces,Spizellomyces sp. 'palustris',F1D7B4F9
+GCA_006535965.1_ASM653596v1,Spizellomyces sp. palustris,CBS 455.65,PRJNA453746,117820,fungi,Chytridiomycota,,Chytridiomycetes,,Spizellomycetales,Spizellomycetaceae,Spizellomyces,Spizellomyces sp. palustris,F1D7B4F9
 GCA_038094135.1_BTNG10-Spongiforma-sp,Spongiforma cf. squarepantsii,TRTC175132,PRJNA1022813,3095534,dikarya,Basidiomycota,,Agaricomycetes,,Boletales,Boletaceae,Spongiforma,Spongiforma cf. squarepantsii,FA44B50B
 GCA_964035595.1_gfSpoDele1,Spongipellis delectans,,PRJEB75241,83244,dikarya,Basidiomycota,,Agaricomycetes,,Polyporales,,Spongipellis,Spongipellis delectans,F7ED32AB
 GCA_038094675.1_BD606-Spongispora-temasekensis,Spongispora temasekensis,KM206830,PRJNA1022813,2338527,dikarya,Basidiomycota,,Agaricomycetes,,Boletales,Boletaceae,Spongispora,Spongispora temasekensis,F736239A
@@ -5001,7 +5001,7 @@ GCA_027475525.1_NeiJiang_Talb_v1.0_genomic,Termitomyces albuminosus,NeiJiang_202
 GCA_017580835.1_ASM1758083v1,Termitomyces bulborhizus,K109284,PRJNA417766,858892,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Lyophyllaceae,Termitomyces,Termitomyces bulborhizus,F02B62CF
 GCA_003316525.1_ASM331652v1,Termitomyces eurrhizus,MG13,PRJNA454572,171347,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Lyophyllaceae,Termitomyces,Termitomyces eurrhizus,F86810A6
 GCA_003313675.1_ASM331367v1,Termitomyces heimii,MG15,PRJNA454572,71929,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Lyophyllaceae,Termitomyces,Termitomyces heimii,F4643156
-GCA_020091625.1_ASM2009162v1,Termitomyces sp. 'cryptogamus',P5,PRJNA648478,2788930,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Lyophyllaceae,Termitomyces,Termitomyces sp. 'cryptogamus',F7FD3019
+GCA_020091625.1_ASM2009162v1,Termitomyces sp. cryptogamus,P5,PRJNA648478,2788930,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Lyophyllaceae,Termitomyces,Termitomyces sp. cryptogamus,F7FD3019
 GCA_018851325.1_ASM1885132v1,Termitomyces sp. DKA19,DKA19,PRJNA417766,2727724,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Lyophyllaceae,Termitomyces,Termitomyces sp. DKA19,F8BFC48A
 GCA_017657295.1_ASM1765729v1,Termitomyces sp. DKA64,DKA64,PRJNA417766,2811476,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Lyophyllaceae,Termitomyces,Termitomyces sp. DKA64,FF07A874
 GCA_001263195.1_TerJ1321.0,Termitomyces sp. J132,J132,PRJNA193471,1306850,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Lyophyllaceae,Termitomyces,Termitomyces sp. J132,FC510A13
