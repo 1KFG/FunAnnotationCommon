@@ -48,7 +48,7 @@ accession_taxonomy = 'ncbi_accessions_taxonomy.csv'
 outsamples = 'samples.csv'
 
 accession_dict = {}
-fields = ['SPECIES', 'STRAIN', 'BIOPROJECT', 'NCBI_TAXONID', 'BUSCO_LINEAGE']
+fields = ['ASMID','SPECIES', 'STRAIN', 'BIOPROJECT', 'NCBI_TAXONID', 'BUSCO_LINEAGE']
 with open(accessions, 'r') as f:
     reader = csv.reader(f)
     header = next(reader)
