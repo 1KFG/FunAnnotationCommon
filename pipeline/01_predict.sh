@@ -28,7 +28,8 @@ do
     echo "Running $ASM for $SPECIES $STRAIN ( $BUSCO_LINEAGE, $LOCUSTAG )"
     GENOMEGZ=$SOURCE/$ASMID/$ASMID\_genomic.fna.gz
     GENOME=$SCRATCH/$ASMID.fa
-    pigz -dc $GENOMEGZ | perl -p -e 's/>(\S+)\s+.+/>$1/' > $GENOME
+    #pigz -dc $GENOMEGZ | perl -p -e 's/>(\S+)\s+.+/>$1/' > $GENOME
+    pigz -dc $GENOMEGZ | ./scripts/clean_genome_fa.py --len 2000 > $GENOME
     OUT=$(echo -n $SPECIES | perl -p -e 'chomp; s/\s+/_/g')
     time funannotate predict --name $LOCUSTAG -i $GENOME --strain "$STRAIN" -o $TARGET/$OUT -s "$SPECIES" --cpu $CPU --busco_db $BUSCO_LINEAGE \
         --AUGUSTUS_CONFIG_PATH $AUGUSTUS_CONFIG_PATH -w codingquarry:0 --min_training_models 50 --tmpdir $SCRATCH --SeqCenter $SEQCENTER --keep_no_stops --header_length 24
