@@ -3,12 +3,13 @@
 from Bio import SeqIO
 import sys
 import argparse
+from natsort import natsorted
 
 parser = argparse.ArgumentParser(description="Clean genome fasta file")
-parser.add_argument("-l","--length", help="minimum length of the sequence", 
+parser.add_argument("-l","--length", help="minimum length of the sequence",
                     type=int, default=1000)
 args = parser.parse_args()
-sequences = []
+sequences = {}
 for record in SeqIO.parse(sys.stdin, "fasta"):
     error = 0
     if len(record) > args.length:
@@ -21,5 +22,11 @@ for record in SeqIO.parse(sys.stdin, "fasta"):
             else:
                 characters[nuc] += 1
         if len(characters) >= 4:
-            sequences.append(record)
-SeqIO.write(sequences, sys.stdout, "fasta")
+            sequences[record.id] = record
+
+seqs = []
+
+for seqname in natsorted(sequences.keys()):
+    seqs.append(sequences[seqname])
+
+SeqIO.write(seqs, sys.stdout, "fasta")
