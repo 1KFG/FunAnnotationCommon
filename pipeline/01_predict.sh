@@ -1,5 +1,5 @@
 #!/usr/bin/bash -l
-#SBATCH -N 1 -n 1 -c 24 --mem 64gb --out logs/funannotate_predict.%a.log
+#SBATCH -N 1 -n 1 -c 16 --mem 32gb --out logs/funannotate_predict.%a.log --time 32:00:00
 
 module load funannotate
 SAMPLES=samples.csv
@@ -25,12 +25,19 @@ IFS=,
 tail -n +2 $SAMPLES | sed -n ${N}p | while read ASMID SPECIES STRAIN BIOPROJECT NCBI_TAXONID BUSCO_LINEAGE PHYLUM SUBPHYLUM CLASS SUBCLASS ORDER FAMILY GENUS SPECIES LOCUSTAG
 do
     LOCUSTAG=$(echo -n "$LOCUSTAG" | perl -p -e 's/[\r\n]//g')
-    echo "Running $ASM for $SPECIES $STRAIN ( $BUSCO_LINEAGE, $LOCUSTAG )"
+    echo "Running $ASMID for $SPECIES $STRAIN ( $BUSCO_LINEAGE, $LOCUSTAG )"
     GENOMEGZ=$SOURCE/$ASMID/$ASMID\_genomic.fna.gz
     GENOME=$SCRATCH/$ASMID.fa
     #pigz -dc $GENOMEGZ | perl -p -e 's/>(\S+)\s+.+/>$1/' > $GENOME
     pigz -dc $GENOMEGZ | ./scripts/clean_genome_fa.py --len 2000 > $GENOME
     OUT=$(echo -n $SPECIES | perl -p -e 'chomp; s/\s+/_/g')
     time funannotate predict --name $LOCUSTAG -i $GENOME --strain "$STRAIN" -o $TARGET/$OUT -s "$SPECIES" --cpu $CPU --busco_db $BUSCO_LINEAGE \
-        --AUGUSTUS_CONFIG_PATH $AUGUSTUS_CONFIG_PATH -w codingquarry:0 --min_training_models 50 --tmpdir $SCRATCH --SeqCenter $SEQCENTER --keep_no_stops --header_length 24
+        --AUGUSTUS_CONFIG_PATH $AUGUSTUS_CONFIG_PATH -w codingquarry:0 --min_training_models 30 --tmpdir $SCRATCH --SeqCenter $SEQCENTER --keep_no_stops --header_length 24
+    F=$(ls $TARGET/$OUT/predict_results/*.gbk | head -n 1)
+    if [ ! -z $F ]; then
+        rm -rf $TARGET/$OUT/predict_misc/EVM $TARGET/$OUT/predict_misc/proteins.combined.fa
+        rm -rf $TARGET/$OUT/predict_misc/glimmerhmm
+        rm -rf $TARGET/$OUT/predict_misc/busco
+        rm -rf $TARGET/$OUT/predict_misc/busco_proteins
+    fi
 done
