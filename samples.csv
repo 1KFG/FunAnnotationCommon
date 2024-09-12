@@ -124,7 +124,7 @@ GCA_001691785.3_ASM169178v3,Amanita brunnescens Koide BX004,Koide BX004,PRJNA236
 GCA_023014455.1_ASM2301445v1,Amanita exitialis,LH00005,PRJNA679796,262245,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Amanitaceae,Amanita,Amanita exitialis,F0A03C30
 GCA_023014435.1_ASM2301443v1,Amanita fuliginea,LH00002,PRJNA679796,67708,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Amanitaceae,Amanita,Amanita fuliginea,F7E3887E
 GCA_001691775.3_ASM169177v3,Amanita inopinata Kibby_2008,Kibby_2008,PRJNA236757,1457513,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Amanitaceae,Amanita,Amanita inopinata,F97183DC
-GCA_000497225.1_AmaJack1.0,Amanita jacksonii TRTC168611,,PRJNA226613,1417757,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Amanitaceae,Amanita,Amanita jacksonii,F36CABC3
+GCA_000497225.1_AmaJack1.0,Amanita jacksonii,TRTC168611,PRJNA226613,1417757,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Amanitaceae,Amanita,Amanita jacksonii,F36CABC3
 GCA_023014405.1_ASM2301440v1,Amanita molliuscula,LH00009,PRJNA679796,1506954,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Amanitaceae,Amanita,Amanita molliuscula,FA685757
 GCA_000827485.1_Amanita_muscaria_Koide_BX008_v1.0,Amanita muscaria Koide BX008,Koide BX008,PRJNA207684,946122,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Amanitaceae,Amanita,Amanita muscaria,F092CD58
 GCA_023014475.1_ASM2301447v1,Amanita pallidorosea,LH00007,PRJNA679796,1324310,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Amanitaceae,Amanita,Amanita pallidorosea,F4C75376
@@ -397,7 +397,7 @@ GCA_015844325.1_ASM1584432v1,Aspergillus nanangensis,MST-FP2251,PRJNA543384,2582
 GCF_003184625.1_Aspneo1,Aspergillus neoniger CBS 115656,CBS 115656,PRJNA235072,1448310,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus neoniger,F844B538
 GCA_023619815.1_ASM2361981v1,Aspergillus neotritici,S2209,PRJNA833221,2932460,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus neotritici,F94BE975
 GCF_000011425.1_ASM1142v1,Aspergillus nidulans FGSC A4,FGSC A4,PRJEA40559,227321,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus nidulans,F197696E
-GCF_000002855.4_ASM285v2,Aspergillus niger,,PRJNA19275,5061,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus niger,F2446433
+GCF_000002855.4_ASM285v2,Aspergillus niger,CBS 513.88,PRJNA19275,5061,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus niger,F2446433
 GCF_001204775.2_ASM120477v2,Aspergillus nomiae NRRL 13137,NRRL 13137,PRJNA246595,1509407,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus nomiae,FC36A3EC
 GCF_002847465.1_Aspnov1,Aspergillus novofumigatus IBT 16806,IBT 16806,PRJNA217212,1392255,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus novofumigatus,F5CBBD58
 GCA_009176405.1_Aspnovo1,Aspergillus novoparasiticus,CBS 126849,PRJNA333905,986946,dikarya,Ascomycota,,Eurotiomycetes,,Eurotiales,Aspergillaceae,Aspergillus,Aspergillus novoparasiticus,FA9BA5F3
@@ -2271,7 +2271,7 @@ GCA_040114055.1_ASM4011405v1,Fusarium temperatum,Ft25622,PRJNA1047553,767483,dik
 GCA_013186935.1_ASM1318693v1,Fusarium thapsinum,NRRL 22049,PRJNA565749,120644,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium thapsinum,F70CBE21
 GCF_013396195.1_ASM1339619v1,Fusarium tjaetaba,NRRL 66243,PRJNA565749,1567544,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium tjaetaba,F95752A3
 GCA_027945595.1_F_torr_CF00136,Fusarium torreyae,CF00136,PRJNA855134,1237075,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium torreyae,FAA8E0A4
-GCA_900312805.1_Ft_NRRL22747_version_1,Fusarium torulosum,,PRJEB14702,33205,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium torulosum,F8DAC071
+GCA_900312805.1_Ft_NRRL22747_version_1,Fusarium torulosum,NRRL 22747,PRJEB14702,33205,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium torulosum,F8DAC071
 GCA_013623685.1_ASM1362368v1,Fusarium transvaalense,NRRL 31008,PRJNA436741,2267551,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium transvaalense,FDAC5ADA
 GCA_020744515.1_Fustr1,Fusarium tricinctum,MPI-SDFR-AT-0068,PRJNA347189,61284,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium tricinctum,FFE76D2A
 GCA_013363205.1_ASM1336320v1,Fusarium tuaranense,NRRL 46518,PRJNA511036,1325736,dikarya,Ascomycota,,Sordariomycetes,,Hypocreales,Nectriaceae,Fusarium,Fusarium tuaranense,FA3BADB9
@@ -2549,7 +2549,7 @@ GCA_003314085.1_ASM331408v1,Hymenopellis chiangmaiae,MG56,PRJNA454572,861053,dik
 GCA_015501595.1_Hymrad1,Hymenopellis radicata,IJFM A160,PRJNA334360,937743,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Physalacriaceae,Hymenopellis,Hymenopellis radicata,FB41C1F5
 GCA_036872995.1_ASM3687299v1,Hymenopellis raphanipes,CGG-A-s1,PRJNA1061796,861056,dikarya,Basidiomycota,,Agaricomycetes,,Agaricales,Physalacriaceae,Hymenopellis,Hymenopellis raphanipes,F881F03E
 GCA_911693285.1_Hyemnoscyphus_albidus_111_1_4,Hymenoscyphus albidus,,PRJEB14442,595503,dikarya,Ascomycota,,Leotiomycetes,,Helotiales,Helotiaceae,Hymenoscyphus,Hymenoscyphus albidus,F8122562
-GCA_900184765.1_v2,Hymenoscyphus fraxineus,,PRJEB21027,746836,dikarya,Ascomycota,,Leotiomycetes,,Helotiales,Helotiaceae,Hymenoscyphus,Hymenoscyphus fraxineus,FD6B8B85
+GCA_900184765.1_v2,Hymenoscyphus fraxineus,KW1,PRJEB21027,746836,dikarya,Ascomycota,,Leotiomycetes,,Helotiales,Helotiaceae,Hymenoscyphus,Hymenoscyphus fraxineus,FD6B8B85
 GCA_001414455.1_H_fructigenus_v1,Hymenoscyphus fructigenus,CBS 650.92,PRJNA298282,51284,dikarya,Ascomycota,,Leotiomycetes,,Helotiales,Helotiaceae,Hymenoscyphus,Hymenoscyphus fructigenus,F637175D
 GCA_001414485.1_H_herbarum_v1,Hymenoscyphus herbarum,CBS 466.73,PRJNA298390,253104,dikarya,Ascomycota,,Leotiomycetes,,Helotiales,Helotiaceae,Hymenoscyphus,Hymenoscyphus herbarum,F0B94504
 GCA_001414345.1_H_infarciens_v1,Hymenoscyphus infarciens,CBS 122016,PRJNA297733,1735278,dikarya,Ascomycota,,Leotiomycetes,,Helotiales,Helotiaceae,Hymenoscyphus,Hymenoscyphus infarciens,FCEA7D29
