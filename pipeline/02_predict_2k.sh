@@ -23,10 +23,10 @@ fi
 N=$(expr $N + 2000)
 export FUNANNOTATE_DB=/bigdata/stajichlab/shared/lib/funannotate_db
 IFS=,
-tail -n +2 $SAMPLES | sed -n ${N}p | while read ASMID SPECIES STRAIN BIOPROJECT NCBI_TAXONID BUSCO_LINEAGE PHYLUM SUBPHYLUM CLASS SUBCLASS ORDER FAMILY GENUS SPECIES LOCUSTAG
+tail -n +2 $SAMPLES | sed -n ${N}p | while read ASMID SPECIESIN STRAIN BIOPROJECT NCBI_TAXONID BUSCO_LINEAGE PHYLUM SUBPHYLUM CLASS SUBCLASS ORDER FAMILY GENUS SPECIES LOCUSTAG
 do
     LOCUSTAG=$(echo -n "$LOCUSTAG" | perl -p -e 's/[\r\n]//g')
-    echo "Running $ASM for $SPECIES $STRAIN ( $BUSCO_LINEAGE, $LOCUSTAG )"
+    echo "Running ASM='$ASMID' for $SPECIES $STRAIN ( $BUSCO_LINEAGE, $LOCUSTAG )"
     GENOMEGZ=$SOURCE/$ASMID/$ASMID\_genomic.fna.gz
     GENOME=$SCRATCH/$ASMID.fa
     #pigz -dc $GENOMEGZ | perl -p -e 's/>(\S+)\s+.+/>$1/' > $GENOME
