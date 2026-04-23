@@ -17,6 +17,7 @@ memory = Memory(cachedir, verbose=0)
 
 #@memory.cache
 def get_locus_from_asm(assembly_id):
+    print(f"asmid = '{assembly_id}'")
     mdsum = hashlib.md5(assembly_id.encode('utf-8')).hexdigest().upper()
     return 'F' + mdsum[-7:]
     
@@ -49,7 +50,7 @@ outsamples = 'samples.csv'
 
 accession_dict = {}
 fields = ['ASMID','SPECIES', 'STRAIN', 'BIOPROJECT', 'NCBI_TAXONID', 'BUSCO_LINEAGE']
-with open(accessions, 'r') as f:
+with open(accessions, 'r', newline='') as f:
     reader = csv.reader(f)
     header = next(reader)
     hdr2dict = {header[i]: i for i in range(len(header))}
@@ -63,7 +64,7 @@ with open(accessions, 'r') as f:
                                     row[hdr2dict['BIOPROJECT']], 
                                     row[hdr2dict['NCBI_TAXID']] ]
         
-with open(accession_taxonomy, 'r') as f:
+with open(accession_taxonomy, 'r', newline='') as f:
     reader = csv.reader(f)
     header = next(reader)
     fields.extend(header[4:])
@@ -76,13 +77,11 @@ with open(accession_taxonomy, 'r') as f:
             buscodb = 'dikarya'
         elif row[4] == "Mucoromycota":
             buscodb = 'mucoromycota'
+        if asm_base not in accession_dict:
+            print(f'{asm_base} not found in accession_dict, skipping')
+            continue
         accession_dict[asm_base].append(buscodb)
-        
-        # add Taxonomy info string to dictionary
-        if asm_base in accession_dict:            
-            accession_dict[asm_base].extend(row[4:])
-        else:
-            print(f'{asm_base} not found in accession_dict')
+        accession_dict[asm_base].extend(row[4:])
             
             
 print(f'{len(accession_dict)} assemblies processed')
@@ -108,8 +107,8 @@ for asm in accession_dict:
     seen[locus] = asm
     accession_dict[asm].append(locus)
     
-with open(outsamples, 'wt') as f:
-    writer = csv.writer(f)
+with open(outsamples, 'wt',newline="") as f:
+    writer = csv.writer(f, lineterminator='\n')
     writer.writerow(fields)
     for asm in accession_dict:
         writer.writerow([asm] + accession_dict[asm])
