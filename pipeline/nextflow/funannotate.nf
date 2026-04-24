@@ -4,12 +4,15 @@ nextflow.enable.dsl = 2
 
 params.samples         = "${launchDir}/samples.csv"
 params.target          = "${launchDir}/annotate"
-params.source          = "/bigdata/stajichlab/shared/projects/1KFG/2021/NCBI_fungi/source/NCBI_ASM"
+params.source          = "/bigdata/stajichlab/shared/projects/1KFG/2023/NCBI_fungi/source/NCBI_ASM"
 params.seqcenter       = "NCBI"
 params.augustus_config = "${launchDir}/lib/augustus/3.5/config"
 params.funannotate_db  = "/bigdata/stajichlab/shared/lib/funannotate_db"
 params.min_contig_len  = 2000
 params.clean_script    = "${launchDir}/scripts/clean_genome_fa.py"
+params.sbt_template    = "${launchDir}/lib/template.sbt"  // fill in correct path
+params.debug           = false   // --debug: verbose logging in script + channel views
+params.n_test          = 0       // --n_test N: limit to first N samples (0 = all)
 
 process FUNANNOTATE_PREDICT {
     tag "$out"
@@ -21,13 +24,12 @@ process FUNANNOTATE_PREDICT {
     publishDir "${params.target}", mode: 'copy', overwrite: true
 
     input:
-    tuple val(out), val(asmid), val(species), val(strain), val(locustag), val(busco_lineage), path(genome_gz)
+    tuple val(out), val(asmid), val(species), val(strain), val(locustag), val(busco_lineage), val(header_length), path(genome_gz)
 
     output:
     tuple val(out), path("${out}/**")
 
     script:
-    def tmpdir = System.getenv('SCRATCH') ?: '/tmp'
     """
     source /etc/profile.d/modules.sh 2>/dev/null || true
     [ -f \$HOME/.bashrc ] && source \$HOME/.bashrc
@@ -35,14 +37,39 @@ process FUNANNOTATE_PREDICT {
 
     export AUGUSTUS_CONFIG_PATH=${params.augustus_config}
     export FUNANNOTATE_DB=${params.funannotate_db}
+    TMPDIR=\${SCRATCH:-/tmp}
 
-    GENOME=${tmpdir}/${asmid}.fa
+    # ---- debug block -------------------------------------------------------
+    echo "[DEBUG] out          = ${out}"
+    echo "[DEBUG] asmid        = ${asmid}"
+    echo "[DEBUG] species      = ${species}"
+    echo "[DEBUG] strain       = ${strain}"
+    echo "[DEBUG] locustag     = ${locustag}"
+    echo "[DEBUG] busco        = ${busco_lineage}"
+    echo "[DEBUG] genome_gz NF = ${genome_gz}"
+    echo "[DEBUG] TMPDIR       = \$TMPDIR"
+    echo "[DEBUG] pwd          = \$(pwd)"
+    ls -lah .
+    stat ${genome_gz} 2>&1 || echo "[DEBUG] stat failed for ${genome_gz}"
+    echo "[DEBUG] is symlink: \$([ -L ${genome_gz} ] && readlink -f ${genome_gz} || echo 'not a symlink')"
+    echo "[DEBUG] pigz version: \$(pigz --version 2>&1)"
+    # ---- end debug block ---------------------------------------------------
+
+    GENOME=\$TMPDIR/${asmid}.fa
+
+    if [ ! -f "${genome_gz}" ]; then
+        echo "ERROR: genome_gz not found at path: ${genome_gz}" >&2
+        exit 1
+    fi
+
+    echo "[INFO] Decompressing and cleaning genome..."
     pigz -dc ${genome_gz} | ${params.clean_script} --len ${params.min_contig_len} > \$GENOME
+    echo "[INFO] Genome written to \$GENOME (size: \$(du -sh \$GENOME | cut -f1))"
 
     funannotate predict --name ${locustag} -i \$GENOME --strain "${strain}" \\
         -o ${out} -s "${species}" --cpu ${task.cpus} --busco_db ${busco_lineage} \\
         --AUGUSTUS_CONFIG_PATH \$AUGUSTUS_CONFIG_PATH -w codingquarry:0 \\
-        --min_training_models 30 --tmpdir ${tmpdir} --SeqCenter ${params.seqcenter} \\
+        --min_training_models 30 --tmpdir \$TMPDIR --SeqCenter ${params.seqcenter} \\
         --keep_no_stops --header_length 24
 
     F=\$(ls ${out}/predict_results/*.gbk 2>/dev/null | head -n 1)
@@ -58,49 +85,120 @@ process FUNANNOTATE_PREDICT {
 
     stub:
     """
+    echo "[STUB] Would run funannotate predict for ${out} using ${genome_gz}"
     mkdir -p ${out}/predict_results
     touch ${out}/predict_results/${out}.gbk
     """
 }
 
+// TODO: interpro scan with nextflow sub?
+// TODO: signalp on gpu?
+
+process FUNANNOTATE_ANNOTATE {
+    tag "$out"
+
+    cpus   16
+    memory '32 GB'
+    time   '48h'
+
+    publishDir "${params.target}", mode: 'copy', overwrite: true
+
+    input:
+    tuple val(out), val(asmid), val(species), val(strain), val(locustag), val(busco_lineage), val(header_length)
+
+    output:
+    tuple val(out), path("${out}/**")
+
+    script:
+    """
+    source /etc/profile.d/modules.sh 2>/dev/null || true
+    [ -f \$HOME/.bashrc ] && source \$HOME/.bashrc
+    module load funannotate
+
+    export AUGUSTUS_CONFIG_PATH=${params.augustus_config}
+    export FUNANNOTATE_DB=${params.funannotate_db}
+    TMPDIR=\${SCRATCH:-/tmp}
+
+    # ---- debug block -------------------------------------------------------
+    echo "[DEBUG] out      = ${out}"
+    echo "[DEBUG] asmid    = ${asmid}"
+    echo "[DEBUG] locustag = ${locustag}"
+    echo "[DEBUG] busco    = ${busco_lineage}"
+    echo "[DEBUG] pwd      = \$(pwd)"
+    ls -lah .
+    # ---- end debug block ---------------------------------------------------
+
+    funannotate annotate -i ${params.target}/${out} \\
+        --species "${species}" --strain "${strain}" \\
+        --busco_db ${busco_lineage} --rename ${locustag} \\
+        --sbt ${params.sbt_template} \\
+        --cpu ${task.cpus} --tmpdir \$TMPDIR
+    """
+
+    stub:
+    """
+    echo "[STUB] Would run funannotate annotate for ${out}"
+    mkdir -p ${out}/annotate_results
+    touch ${out}/annotate_results/${out}.gbk
+    """
+}
+
+// Check whether predict_results already has a gbk for this sample.
+// Uses explicit directory listing rather than a glob path object, which
+// is always truthy in Groovy regardless of whether files exist.
+def hasExistingGbk(targetDir, out) {
+    def dir = new File("${targetDir}/${out}/predict_results")
+    if (!dir.exists()) return false
+    return dir.list()?.any { f -> f.endsWith('.gbk') } ?: false
+}
+
 workflow {
     def target = file(params.target)
 
-    Channel
+    def jobs = channel
         .fromPath(params.samples)
         .splitCsv(header: true)
         .map { row ->
-            def species  = row.SPECIES?.trim()
-            def out      = species?.replaceAll(/\s+/, '_')
-            def asmid    = row.ASMID?.trim()
-            def strain   = row.STRAIN?.trim()
-            def locustag = row.LOCUSTAG?.replaceAll(/[\r\n]/, '')?.trim()
-            def busco    = row.BUSCO_LINEAGE?.trim()
-            [out, asmid, species, strain, locustag, busco]
+            def species      = row.SPECIES?.trim()
+            def strain       = row.STRAIN?.trim()
+            strain = strain.replaceAll(/;.*$/,'').trim()
+            def out          = [species,strain].findAll { it }.join('_').replaceAll(/\s+/, '_')
+            def asmid        = row.ASMID?.trim()
+            def locustag     = row.LOCUSTAG?.replaceAll(/[\r\n]/, '')?.trim()
+            def busco        = row.BUSCO_LINEAGE?.trim()
+            def header_length = 24
+            [out, asmid, species, strain, locustag, busco, header_length]
         }
-        .filter { out, asmid, species, strain, locustag, busco ->
+        .filter { out, asmid, _species, _strain, _locustag, _busco, _header_length ->
             out && asmid
         }
-        .map { out, asmid, species, strain, locustag, busco ->
-            def gz       = file("${params.source}/${asmid}/${asmid}_genomic.fna.gz")
-            def existing = file("${target}/${out}/predict_results/*.gbk")
-            [out, asmid, species, strain, locustag, busco, gz, existing]
+        // n_test > 0 limits to first N samples; -1 means take all
+        .take(params.n_test > 0 ? params.n_test as int : -1)
+        .map { out, asmid, species, strain, locustag, busco, header_length ->
+            def gz = file("${params.source}/${asmid}/${asmid}_genomic.fna.gz")
+            [out, asmid, species, strain, locustag, busco, header_length, gz]
         }
-        .filter { out, asmid, species, strain, locustag, busco, gz, existing ->
-            if (existing) {
+        .filter { out, asmid, _species, _strain, _locustag, _busco, _header_length, gz ->
+            if (hasExistingGbk(target, out)) {
                 log.info "Skipping ${out}: predict_results gbk already present"
                 return false
             }
             if (!gz.exists()) {
-                log.warn "Missing genome for ${out}: ${gz}"
+                log.warn "Missing genome for ${out} (asmid=${asmid}): ${gz}"
                 return false
+            }
+            if (params.debug) {
+                log.info "Queuing ${out}: genome=${gz} (${gz.size()} bytes)"
             }
             return true
         }
-        .map { out, asmid, species, strain, locustag, busco, gz, existing ->
-            tuple(out, asmid, species, strain, locustag, busco, gz)
+        .map { out, asmid, species, strain, locustag, busco, header_length, gz ->
+            tuple(out, asmid, species, strain, locustag, busco, header_length, gz)
         }
-        .set { jobs }
+
+    if (params.debug) {
+        jobs.view { t -> "[CHANNEL] Submitting: out=${t[0]}, asmid=${t[1]}, gz=${t[7]}" }
+    }
 
     FUNANNOTATE_PREDICT(jobs)
 }

@@ -7,7 +7,7 @@ params.target       = "${launchDir}/annotate"
 params.inputfolder  = "predict_results"
 params.taxon        = "fungi"
 
-process ANTISMASH {
+process ANTISMASH_RUN {
     tag "$out"
 
     cpus   8
@@ -47,15 +47,15 @@ process ANTISMASH {
 workflow {
     def target = file(params.target)
 
-    Channel
+    channel
         .fromPath(params.samples)
         .splitCsv(header: true)
         .map { row ->
             def out = row.SPECIES?.trim()?.replaceAll(/\s+/, '_')
             [out, row]
         }
-        .filter { out, row -> out }
-        .map { out, row ->
+        .filter { out, _row -> out }
+        .map { out, _row ->
             def gbks   = file("${target}/${out}/${params.inputfolder}/*.gbk")
             def jsons  = file("${target}/${out}/antismash_local/*.json")
             def gzs    = file("${target}/${out}/antismash_local/*.json.gz")
@@ -72,8 +72,8 @@ workflow {
             }
             return true
         }
-        .map { out, gbks, existing -> tuple(out, gbks[0]) }
+        .map { out, gbks, _existing -> tuple(out, gbks[0]) }
         .set { jobs }
 
-    ANTISMASH(jobs)
+    ANTISMASH_RUN(jobs)
 }

@@ -6684,7 +6684,7 @@ GCA_030562965.1_ASM3056296v1,Starmerella ratchasimensis,CBS 10611,PRJNA736342,22
 GCA_004124955.1_ASM412495v1,Starmerella riodocensis,NRRL Y-27859,PRJNA396763,308924,dikarya,Ascomycota,,Dipodascomycetes,,Dipodascales,Trichomonascaceae,Starmerella,Starmerella riodocensis,FA570C47
 GCA_030584945.1_ASM3058494v1,Starmerella roubikii,CBS 15148,PRJNA736342,2596946,dikarya,Ascomycota,,Dipodascomycetes,,Dipodascales,Trichomonascaceae,Starmerella,Starmerella roubikii,FA7AD8F9
 GCA_030565305.1_ASM3056530v1,Starmerella scarabaei,CBS 14174,PRJNA736342,2860204,dikarya,Ascomycota,,Dipodascomycetes,,Dipodascales,Trichomonascaceae,Starmerella,Starmerella scarabaei,F7384732
-GCA_030578495.1_ASM3057849v1,Starmerella sirachaensis,NBRC 108605;AB617909,PRJNA736342,1217581,dikarya,Ascomycota,,Dipodascomycetes,,Dipodascales,Trichomonascaceae,Starmerella,Starmerella sirachaensis,F51934E8
+GCA_030578495.1_ASM3057849v1,Starmerella sirachaensis,NBRC 108605 AB617909,PRJNA736342,1217581,dikarya,Ascomycota,,Dipodascomycetes,,Dipodascales,Trichomonascaceae,Starmerella,Starmerella sirachaensis,F51934E8
 GCA_030555795.1_ASM3055579v1,Starmerella sorbosivorans,NCYC 2938,PRJNA736342,140312,dikarya,Ascomycota,,Dipodascomycetes,,Dipodascales,Trichomonascaceae,Starmerella,Starmerella sorbosivorans,F1AFEE09
 GCA_037041025.1_ASM3704102v1,Starmerella sp. DX6506,DX6506,PRJNA833221,3092693,dikarya,Ascomycota,,Dipodascomycetes,,Dipodascales,Trichomonascaceae,Starmerella,Starmerella sp. DX6506,F095DE99
 GCA_030674195.1_ASM3067419v1,Starmerella stellata,NRRL Y-1446,PRJNA736342,45594,dikarya,Ascomycota,,Dipodascomycetes,,Dipodascales,Trichomonascaceae,Starmerella,Starmerella stellata,FDA8B210
@@ -7840,8 +7840,8 @@ GCA_023628935.1_ASM2362893v1,Zygoascus sp. PK3305,PK3305,PRJNA833221,2939544,dik
 GCA_030569095.1_ASM3056909v1,Zygoascus tannicola,NRRL Y-17392T,PRJNA736342,45514,dikarya,Ascomycota,,Dipodascomycetes,,Dipodascales,Trichomonascaceae,Zygoascus,Zygoascus tannicola,FD6B1078
 GCA_054661495.1_Zygophlyctis_sp._KS116_1.0,Zygophlyctis sp. KS116,KS116,PRJDB18581,3241175,fungi,Chytridiomycota,,Chytridiomycetes,,Zygophlyctidales,Zygophlyctidaceae,Zygophlyctis,Zygophlyctis sp. KS116,F797C73E
 GCA_949129075.1_ZBA_7846_DN,Zygosaccharomyces bailii,,PRJEB59101,4954,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Zygosaccharomyces,Zygosaccharomyces bailii,F1096ACE
-GCA_000442885.1_ZYBA0,Zygosaccharomyces bailii CLIB 213,CLIB 213 = CBS 680,PRJEB1908,1333698,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Zygosaccharomyces,Zygosaccharomyces bailii,FB93A9E5
-GCA_000530735.1_Z_bailii_ISA1307_version_3,Zygosaccharomyces bailii ISA1307,ISA1307,PRJEB4569,1355161,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Zygosaccharomyces,Zygosaccharomyces bailii,FC19BAFE
+GCA_000442885.1_ZYBA0,Zygosaccharomyces bailii,CLIB 213,PRJEB1908,1333698,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Zygosaccharomyces,Zygosaccharomyces bailii,FB93A9E5
+GCA_000530735.1_Z_bailii_ISA1307_version_3,Zygosaccharomyces bailii,ISA1307,PRJEB4569,1355161,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Zygosaccharomyces,Zygosaccharomyces bailii,FC19BAFE
 GCA_965637955.1_ZPJB6Y2_assembly,Zygosaccharomyces bisporus,JB6Y2,PRJEB89506,4957,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Zygosaccharomyces,Zygosaccharomyces bisporus,F856CEDC
 GCA_979507025.1_PYCC6990_ont,Zygosaccharomyces favi,PYCC6990,PRJEB107124,2024901,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Zygosaccharomyces,Zygosaccharomyces favi,F54E7B2E
 GCA_979262735.1_PYCC8738,Zygosaccharomyces gambellarensis,PYCC8738,PRJEB107124,927244,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Zygosaccharomyces,Zygosaccharomyces gambellarensis,F3107872
