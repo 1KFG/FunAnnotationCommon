@@ -4,6 +4,7 @@ nextflow.enable.dsl = 2
 
 params.samples         = "${launchDir}/samples.csv"
 params.target          = "${launchDir}/annotate"
+params.proteins	       = "${launchDir}/lib/swissprot_fungi.faa"
 params.source          = "/bigdata/stajichlab/shared/projects/1KFG/2023/NCBI_fungi/source/NCBI_ASM"
 params.seqcenter       = "NCBI"
 params.augustus_config = "${launchDir}/lib/augustus/3.5/config"
@@ -32,7 +33,8 @@ process FUNANNOTATE_PREDICT {
     script:
     """
     source /etc/profile.d/modules.sh 2>/dev/null || true
-    [ -f \$HOME/.bashrc ] && source \$HOME/.bashrc
+    module load miniconda3
+    eval "\$(conda shell.bash hook)"
     module load funannotate
 
     export AUGUSTUS_CONFIG_PATH=${params.augustus_config}
@@ -46,6 +48,7 @@ process FUNANNOTATE_PREDICT {
     echo "[DEBUG] strain       = ${strain}"
     echo "[DEBUG] locustag     = ${locustag}"
     echo "[DEBUG] busco        = ${busco_lineage}"
+    echo "[DEBUG] proteins     = ${params.proteins}"
     echo "[DEBUG] genome_gz NF = ${genome_gz}"
     echo "[DEBUG] TMPDIR       = \$TMPDIR"
     echo "[DEBUG] pwd          = \$(pwd)"
@@ -70,14 +73,15 @@ process FUNANNOTATE_PREDICT {
         -o ${out} -s "${species}" --cpu ${task.cpus} --busco_db ${busco_lineage} \\
         --AUGUSTUS_CONFIG_PATH \$AUGUSTUS_CONFIG_PATH -w codingquarry:0 \\
         --min_training_models 30 --tmpdir \$TMPDIR --SeqCenter ${params.seqcenter} \\
-        --keep_no_stops --header_length 24
+        --keep_no_stops --header_length 24 --protein_evidence ${params.proteins}
 
     F=\$(ls ${out}/predict_results/*.gbk 2>/dev/null | head -n 1)
     if [ ! -z "\$F" ]; then
-        rm -rf ${out}/predict_misc/EVM ${out}/predict_misc/proteins.combined.fa
-        rm -rf ${out}/predict_misc/glimmerhmm
-        rm -rf ${out}/predict_misc/busco
-        rm -rf ${out}/predict_misc/busco_proteins
+    	mv ${out}/predict_misc/ab_initio_parameters ${out}
+	rm -rf ${out}/predict_misc
+	mkdir -p ${out}/predict_misc
+	mv ${out}/ab_initio_parameters ${out}/predict_misc
+	pigz ${out}/predict_results/*.txt ${out}/predict_results/*.mrna-transcripts.fa
     fi
 
     rm -f \$GENOME
@@ -112,7 +116,8 @@ process FUNANNOTATE_ANNOTATE {
     script:
     """
     source /etc/profile.d/modules.sh 2>/dev/null || true
-    [ -f \$HOME/.bashrc ] && source \$HOME/.bashrc
+    module load miniconda3
+    eval "\$(conda shell.bash hook)"
     module load funannotate
 
     export AUGUSTUS_CONFIG_PATH=${params.augustus_config}
@@ -159,8 +164,8 @@ workflow {
         .fromPath(params.samples)
         .splitCsv(header: true)
         .map { row ->
-            def species      = row.SPECIES?.trim()
-            def strain       = row.STRAIN?.trim()
+            def species      = row.SPECIES?.trim()?.replaceAll(/['"]/, '')
+            def strain       = row.STRAIN?.trim()?.replaceAll(/['"]/, '')
             strain = strain.replaceAll(/;.*$/,'').trim()
             def out          = [species,strain].findAll { it }.join('_').replaceAll(/\s+/, '_')
             def asmid        = row.ASMID?.trim()

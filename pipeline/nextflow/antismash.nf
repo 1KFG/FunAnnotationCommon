@@ -25,7 +25,8 @@ process ANTISMASH_RUN {
     script:
     """
     source /etc/profile.d/modules.sh 2>/dev/null || true
-    [ -f \$HOME/.bashrc ] && source \$HOME/.bashrc
+    module load miniconda3
+    eval "\$(conda shell.bash hook)"
     module load antismash
     antismash --taxon ${params.taxon} \\
         --output-dir antismash_local \\
@@ -51,7 +52,10 @@ workflow {
         .fromPath(params.samples)
         .splitCsv(header: true)
         .map { row ->
-            def out = row.SPECIES?.trim()?.replaceAll(/\s+/, '_')
+            def species = row.SPECIES?.trim()?.replaceAll(/['"]/, '')
+            def strain  = row.STRAIN?.trim()?.replaceAll(/['"]/, '')
+            strain = strain?.replaceAll(/;.*$/, '')?.trim()
+            def out = [species, strain].findAll { it }.join('_').replaceAll(/\s+/, '_')
             [out, row]
         }
         .filter { out, _row -> out }
