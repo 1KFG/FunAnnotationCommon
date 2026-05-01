@@ -5,7 +5,7 @@ nextflow.enable.dsl = 2
 params.samples         = "${launchDir}/samples.csv"
 params.target          = "${launchDir}/annotate"
 params.proteins	       = "${launchDir}/lib/swissprot_fungi.faa"
-params.source          = "/bigdata/stajichlab/shared/projects/1KFG/2023/NCBI_fungi/source/NCBI_ASM"
+params.source          = "/bigdata/stajichlab/shared/projects/1KFG/2026/NCBI_fungi/source/NCBI_ASM"
 params.seqcenter       = "NCBI"
 params.augustus_config = "${launchDir}/lib/augustus/3.5/config"
 params.funannotate_db  = "/bigdata/stajichlab/shared/lib/funannotate_db"
@@ -25,7 +25,7 @@ process FUNANNOTATE_PREDICT {
     publishDir "${params.target}", mode: 'copy', overwrite: true
 
     input:
-    tuple val(out), val(asmid), val(species), val(strain), val(locustag), val(busco_lineage), val(header_length), path(genome_gz)
+    tuple val(out), val(asmid), val(species), val(strain), val(locustag), val(busco_lineage), val(header_length), val(transl_table), path(genome_gz)
 
     output:
     tuple val(out), path("${out}/**")
@@ -48,6 +48,7 @@ process FUNANNOTATE_PREDICT {
     echo "[DEBUG] strain       = ${strain}"
     echo "[DEBUG] locustag     = ${locustag}"
     echo "[DEBUG] busco        = ${busco_lineage}"
+    echo "[DEBUG] transl_table = ${transl_table}"
     echo "[DEBUG] proteins     = ${params.proteins}"
     echo "[DEBUG] genome_gz NF = ${genome_gz}"
     echo "[DEBUG] TMPDIR       = \$TMPDIR"
@@ -69,20 +70,26 @@ process FUNANNOTATE_PREDICT {
     pigz -dc ${genome_gz} | ${params.clean_script} --len ${params.min_contig_len} > \$GENOME
     echo "[INFO] Genome written to \$GENOME (size: \$(du -sh \$GENOME | cut -f1))"
 
+    TBL2ASN_PARAMS="-l paired-ends"
+    [ "${transl_table}" != "1" ] && TBL2ASN_PARAMS="\$TBL2ASN_PARAMS -gc ${transl_table}"
+
     funannotate predict --name ${locustag} -i \$GENOME --strain "${strain}" \\
         -o ${out} -s "${species}" --cpu ${task.cpus} --busco_db ${busco_lineage} \\
         --AUGUSTUS_CONFIG_PATH \$AUGUSTUS_CONFIG_PATH -w codingquarry:0 \\
         --min_training_models 30 --tmpdir \$TMPDIR --SeqCenter ${params.seqcenter} \\
-        --keep_no_stops --header_length 24 --protein_evidence ${params.proteins}
+        --keep_no_stops --header_length 24 --protein_evidence ${params.proteins} \\
+        --tbl2asn "\$TBL2ASN_PARAMS" --table ${transl_table}
 
     F=\$(ls ${out}/predict_results/*.gbk 2>/dev/null | head -n 1)
-    if [ ! -z "\$F" ]; then
-    	mv ${out}/predict_misc/ab_initio_parameters ${out}
-	rm -rf ${out}/predict_misc
-	mkdir -p ${out}/predict_misc
-	mv ${out}/ab_initio_parameters ${out}/predict_misc
-	pigz ${out}/predict_results/*.txt ${out}/predict_results/*.mrna-transcripts.fa
+    if [ -z "\$F" ]; then
+        echo "ERROR: funannotate predict did not produce a .gbk in ${out}/predict_results — treating as failure" >&2
+        exit 1
     fi
+    mv ${out}/predict_misc/ab_initio_parameters ${out}
+    rm -rf ${out}/predict_misc
+    mkdir -p ${out}/predict_misc
+    mv ${out}/ab_initio_parameters ${out}/predict_misc
+    pigz ${out}/predict_results/*.txt ${out}/predict_results/*.mrna-transcripts.fa
 
     rm -f \$GENOME
     """
@@ -172,18 +179,19 @@ workflow {
             def locustag     = row.LOCUSTAG?.replaceAll(/[\r\n]/, '')?.trim()
             def busco        = row.BUSCO_LINEAGE?.trim()
             def header_length = 24
-            [out, asmid, species, strain, locustag, busco, header_length]
+            def transl_table = row.TRANSL_TABLE?.trim() ?: '1'
+            [out, asmid, species, strain, locustag, busco, header_length, transl_table]
         }
-        .filter { out, asmid, _species, _strain, _locustag, _busco, _header_length ->
+        .filter { out, asmid, _species, _strain, _locustag, _busco, _header_length, _transl_table ->
             out && asmid
         }
         // n_test > 0 limits to first N samples; -1 means take all
-        .take(params.n_test > 0 ? params.n_test as int : -1)
-        .map { out, asmid, species, strain, locustag, busco, header_length ->
+        .take((params.n_test as int) > 0 ? params.n_test as int : -1)
+        .map { out, asmid, species, strain, locustag, busco, header_length, transl_table ->
             def gz = file("${params.source}/${asmid}/${asmid}_genomic.fna.gz")
-            [out, asmid, species, strain, locustag, busco, header_length, gz]
+            [out, asmid, species, strain, locustag, busco, header_length, transl_table, gz]
         }
-        .filter { out, asmid, _species, _strain, _locustag, _busco, _header_length, gz ->
+        .filter { out, asmid, _species, _strain, _locustag, _busco, _header_length, _transl_table, gz ->
             if (hasExistingGbk(target, out)) {
                 log.info "Skipping ${out}: predict_results gbk already present"
                 return false
@@ -197,12 +205,12 @@ workflow {
             }
             return true
         }
-        .map { out, asmid, species, strain, locustag, busco, header_length, gz ->
-            tuple(out, asmid, species, strain, locustag, busco, header_length, gz)
+        .map { out, asmid, species, strain, locustag, busco, header_length, transl_table, gz ->
+            tuple(out, asmid, species, strain, locustag, busco, header_length, transl_table, gz)
         }
 
     if (params.debug) {
-        jobs.view { t -> "[CHANNEL] Submitting: out=${t[0]}, asmid=${t[1]}, gz=${t[7]}" }
+        jobs.view { t -> "[CHANNEL] Submitting: out=${t[0]}, asmid=${t[1]}, transl_table=${t[7]}, gz=${t[8]}" }
     }
 
     FUNANNOTATE_PREDICT(jobs)
