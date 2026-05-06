@@ -71,7 +71,6 @@ process FUNANNOTATE_PREDICT {
     echo "[INFO] Genome written to \$GENOME (size: \$(du -sh \$GENOME | cut -f1))"
 
     TBL2ASN_PARAMS="-l paired-ends"
-    [ "${transl_table}" != "1" ] && TBL2ASN_PARAMS="\$TBL2ASN_PARAMS -gc ${transl_table}"
 
     funannotate predict --name ${locustag} -i \$GENOME --strain "${strain}" \\
         -o ${out} -s "${species}" --cpu ${task.cpus} --busco_db ${busco_lineage} \\
