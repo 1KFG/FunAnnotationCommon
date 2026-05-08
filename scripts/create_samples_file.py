@@ -43,6 +43,20 @@ def get_bioproject_prefix(BIOPROJECTID):
             break
     return LOCUSTAG
 
+# Families where all members use the Alternative Yeast Nuclear Code (CUG→Ser, table 12)
+TRANSL_TABLE_12_FAMILIES = {'Debaryomycetaceae'}
+# Individual genera using table 12 not covered by the family-level rule above
+TRANSL_TABLE_12_GENERA = {'Clavispora'}
+# Genera using Pachysolen tannophilus Nuclear Code (CUG→Ala, table 26)
+TRANSL_TABLE_26_GENERA = {'Pachysolen'}
+
+def get_transl_table(family, genus):
+    if family in TRANSL_TABLE_12_FAMILIES or genus in TRANSL_TABLE_12_GENERA:
+        return 12
+    if genus in TRANSL_TABLE_26_GENERA:
+        return 26
+    return 1
+
 accessions = 'ncbi_accessions.csv'
 accession_taxonomy = 'ncbi_accessions_taxonomy.csv'
 
@@ -68,20 +82,28 @@ with open(accession_taxonomy, 'r', newline='') as f:
     reader = csv.reader(f)
     header = next(reader)
     fields.extend(header[4:])
+    fields.append('TRANSL_TABLE')
+    tax_hdr = {header[i]: i for i in range(len(header))}
     for row in reader:
         asm_base = row[0]
-        
+
         # add the BUSCO lineage to the dictionary
         buscodb = 'fungi'
         if row[4] == "Ascomycota" or row[4] == "Basidiomycota":
             buscodb = 'dikarya'
         elif row[4] == "Mucoromycota":
             buscodb = 'mucoromycota'
+        elif row[4] == 'Microsporidia':
+            buscodb = 'microsporidia'
         if asm_base not in accession_dict:
             print(f'{asm_base} not found in accession_dict, skipping')
             continue
+        family = row[tax_hdr['FAMILY']] if 'FAMILY' in tax_hdr else ''
+        genus = row[tax_hdr['GENUS']] if 'GENUS' in tax_hdr else ''
+        transl_table = get_transl_table(family, genus)
         accession_dict[asm_base].append(buscodb)
         accession_dict[asm_base].extend(row[4:])
+        accession_dict[asm_base].append(transl_table)
             
             
 print(f'{len(accession_dict)} assemblies processed')
