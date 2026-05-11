@@ -8,5 +8,6 @@ mkdir -p logs
 
 nextflow run pipeline/nextflow/funannotate.nf \
     -profile slurm,funannotate \
+    --suppress suppress.txt
     -resume \
     "$@"
