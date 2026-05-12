@@ -21,8 +21,9 @@ mkdir -p logs
 
 nextflow run pipeline/nextflow/funannotate.nf \
 	-profile local,funannotate \
-	-resume \
-	--samples ../samples_${N}_7500.csv  \
+	-resume  \
+	--only_clean \
+	--samples ../samples_${N}_7500.csv \
 	-w ../work.funannotate \
 	--max_cpus $CPU \
 	--suppress ../suppress.txt

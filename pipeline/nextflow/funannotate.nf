@@ -28,18 +28,54 @@ params.only_clean      = false   // --only_clean: stop after GENOME_CLEAN (skip 
 // Metadata tuple order used throughout:
 //   val(out), val(asmid), val(species), val(strain), val(locustag),
 //   val(busco_lineage), val(header_length), val(transl_table)
-// GENOME_CLEAN receives: ..., path(genome_gz), val(taxonid)
-//   → emits: ..., path(genome_fa), val(taxonid)
+// GENOME_CLEAN receives: ..., path(genome_gz), val(taxonid), val(taxondb)
+//   → emits: ..., val(genome_fa_abs), val(taxonid)   [path as string; taxondb dropped]
 //   → writes <asmid>.fa to input_clean_genomes/ (storeDir; skip check targets this file)
 //   → purge/FCS intermediates written as side effects to input_clean_genomes/clean/
-// SRA_FETCH receives: ..., path(genome_fa), val(taxonid)
-//   → emits: ..., val(genome_fa_abs), path(reads_dir)   [reads_dir may be empty]
+// SRA_FETCH receives: ..., val(genome_fa), val(taxonid)
+//   → emits: ..., val(genome_fa), path(reads_dir)   [reads_dir may be empty]
 // FUNANNOTATE_TRAIN receives: ..., val(genome_fa), path(reads_dir)
 //   → emits: ..., val(genome_fa)   [reads deleted after training]
 // FUNANNOTATE_PREDICT receives: ..., val(genome_fa)
 
+// Download and extract NCBI taxdump once; storeDir caches it at params.taxondb so
+// subsequent runs skip this entirely.
+process SETUP_TAXONDB {
+    storeDir params.taxondb
+
+    cpus   1
+    memory '4 GB'
+    time   '1h'
+
+    output:
+    path "names.dmp",    emit: ready
+    path "nodes.dmp"
+    path "merged.dmp"
+    path "delnodes.dmp"
+    path "division.dmp"
+    path "gencode.dmp"
+    path "citations.dmp"
+
+    script:
+    """
+    set -euo pipefail
+    wget --no-verbose https://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz
+    tar zxf taxdump.tar.gz
+    rm taxdump.tar.gz
+    """
+
+    stub:
+    """
+    for f in names.dmp nodes.dmp merged.dmp delnodes.dmp division.dmp gencode.dmp citations.dmp; do
+        touch \$f
+    done
+    """
+}
+
 process GENOME_CLEAN {
     tag "$asmid"
+
+    container '/rhome/jstajich/projects/AAFTF/AAFTF_v0.6.1-signed.sif'
 
     // Nextflow skips this task when input_clean_genomes/<asmid>.fa already exists.
     storeDir "${launchDir}/input_clean_genomes"
@@ -51,12 +87,12 @@ process GENOME_CLEAN {
     input:
     tuple val(out), val(asmid), val(species), val(strain), val(locustag),
           val(busco_lineage), val(header_length), val(transl_table),
-          path(genome_gz), val(taxonid)
+          path(genome_gz), val(taxonid), val(taxondb)
 
     output:
     tuple val(out), val(asmid), val(species), val(strain), val(locustag),
           val(busco_lineage), val(header_length), val(transl_table),
-          path("${asmid}.fa"), val(taxonid), emit: genome
+          val("${launchDir}/input_clean_genomes/${asmid}.fa"), val(taxonid), emit: genome
 
     script:
     """
@@ -64,14 +100,18 @@ process GENOME_CLEAN {
         echo "ERROR: genome_gz not found at path: ${genome_gz}" >&2
         exit 1
     fi
-
     module load AAFTF
+
     # Ensure /dev/shm/gxdb is present on this node; register for cleanup when done.
     source ${launchDir}/scripts/setup_fcs_shm.sh
-    TAXONKIT_DB=${params.taxondb}
+    SCRATCH=\$(printf '%s' "\${SCRATCH}" | tr -d '\\n\\r')
+    TAXONKIT_DB=${taxondb}
     module load taxonkit
-    phylum=\$(echo ${taxonid} | taxonkit --data-dir \$TAXONKIT_DB lineage | taxonkit --data-dir \$TAXONKIT_DB reformat -f "{p}" | cut -f3 | taxonkit --data-dir \$TAXONKIT_DB name2taxid | cut -f2)
-    module unload taxonkit
+    phylum=\$(echo ${taxonid} | taxonkit --data-dir \$TAXONKIT_DB lineage | taxonkit --data-dir \$TAXONKIT_DB reformat -f "{p}" | cut -f3 | taxonkit --data-dir \$TAXONKIT_DB name2taxid | cut -f2 | uniq | head -n 1)
+    if [ -z "\$phylum" ]; then
+    	phylum=\$(echo ${taxonid} | taxonkit --data-dir \$TAXONKIT_DB lineage | taxonkit --data-dir \$TAXONKIT_DB reformat -f "{K}" | cut -f3 | taxonkit --data-dir \$TAXONKIT_DB name2taxid | uniq | cut -f2 | head -n 1)
+	# weird we are getting 2 lines from name2taxid when input is Fungi add the uniq/head -n 1 to ensure only one line
+    fi
     echo "[INFO] Phylum for ${asmid} (taxonid=${taxonid}): \$phylum"
     echo "[INFO] Decompressing and cleaning genome for ${asmid}..."
     pigz -dc ${genome_gz} > \$SCRATCH/${asmid}.raw.fa
@@ -83,7 +123,8 @@ process GENOME_CLEAN {
     cat \$SCRATCH/${asmid}.purge.fasta | \
         ${params.clean_script} --len ${params.min_contig_len} > ${asmid}.fa
     echo "[INFO] Clean genome written: ${asmid}.fa (\$(du -sh ${asmid}.fa | cut -f1))"
-    pigz \$SCRATCH/${asmid}.purge.fasta  \$SCRATCH/${asmid}.purge.fcs_gx-taxonomy.tsv 
+    pigz \$SCRATCH/${asmid}.purge.fasta 
+    pigz \$SCRATCH/${asmid}.purge.fcs_gx-taxonomy.tsv 
     mv \$SCRATCH/${asmid}.purge.fasta.gz \$SCRATCH/${asmid}.purge.fcs_gx-taxonomy.tsv.gz ${launchDir}/input_clean_genomes/clean/
     """
 
@@ -109,12 +150,12 @@ process SRA_FETCH {
     input:
     tuple val(out), val(asmid), val(species), val(strain), val(locustag),
           val(busco_lineage), val(header_length), val(transl_table),
-          path(genome_fa), val(taxonid)
+          val(genome_fa), val(taxonid)
 
     output:
     tuple val(out), val(asmid), val(species), val(strain), val(locustag),
           val(busco_lineage), val(header_length), val(transl_table),
-          val("${launchDir}/input_clean_genomes/${asmid}.fa"), path("reads"), emit: reads
+          val(genome_fa), path("reads"), emit: reads
 
     script:
     """
@@ -270,7 +311,7 @@ process FUNANNOTATE_PREDICT {
         -o ${out} -s "${species}" --cpu ${task.cpus} --busco_db ${busco_lineage} \\
         --AUGUSTUS_CONFIG_PATH \$AUGUSTUS_CONFIG_PATH -w codingquarry:0 \\
         --min_training_models 30 --tmpdir \$TMPDIR --SeqCenter ${params.seqcenter} \\
-        --keep_no_stops --header_length 24 --protein_evidence ${params.proteins} \\
+        --keep_no_stops --header_length ${header_length} --protein_evidence ${params.proteins} \\
         --tbl2asn "\$TBL2ASN_PARAMS" --table ${transl_table}
 
     EXPECTED_GBK="${out}/predict_results/${out}.gbk"
@@ -520,8 +561,11 @@ workflow {
         jobs.view { t -> "[CHANNEL] Submitting: out=${t[0]}, asmid=${t[1]}, transl_table=${t[7]}, gz=${t[8]}" }
     }
 
-
-    GENOME_CLEAN(jobs)
+    // Ensure taxondb is populated before any GENOME_CLEAN task starts.
+    // SETUP_TAXONDB uses storeDir so it runs at most once across all pipeline runs.
+    SETUP_TAXONDB()
+    def taxondb_ch = SETUP_TAXONDB.out.ready.map { params.taxondb }
+    GENOME_CLEAN(jobs.combine(taxondb_ch))
 
     if (!params.only_clean) {
         SRA_FETCH(GENOME_CLEAN.out.genome)

@@ -25,6 +25,10 @@ params.singularity_cache = "/bigdata/stajichlab/shared/containers/interproscan6"
 process INTERPROSCAN6_RUN {
     tag "$out"
 
+    cpus   16
+    memory '64 GB'
+    time   '72h'
+
     publishDir "${params.target}", mode: 'copy', overwrite: true
 
     input:
