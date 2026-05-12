@@ -1,5 +1,5 @@
 #!/usr/bin/bash -l
-#SBATCH --mem 512gb -N 1 -n 1 -c 64 --out contam_purge.log
+#SBATCH -p highmem --mem 512gb -N 1 -n 1 -c 64 --out contam_purge.log
 
 module load AAFTF
 hostname
