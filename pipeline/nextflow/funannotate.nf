@@ -23,20 +23,31 @@ params.run_interpro    = false   // --run_interpro: run InterProScan before funa
 params.run_signalp     = false   // --run_signalp: run SignalP 6 (requires GPU node) before funannotate annotate
 params.antismash_taxon = "fungi" // --antismash_taxon: antiSMASH --taxon value
 params.only_clean      = false   // --only_clean: stop after GENOME_CLEAN (skip prediction and all post-predict steps)
+params.run_sra_fetch   = true    // --run_sra_fetch false: skip SRA download + funannotate train
+params.skip_repeatmasker = false // --skip_repeatmasker: skip RepeatModeler+RepeatMasker steps
+params.pasa_mysql    = false   // --pasa_mysql: start a per-task MariaDB instance for PASA
+params.mariadb_sif   = "/bigdata/stajichlab/shared/lib/mariadb/mariadb.sif"
+params.mysql_datadir = ""      // path to template MySQL data dir (required with --pasa_mysql)
+params.pasa_conf_dir = ""      // path to dir with my.cnf + conf.txt (required with --pasa_mysql)
 
 
 // Metadata tuple order used throughout:
 //   val(out), val(asmid), val(species), val(strain), val(locustag),
 //   val(busco_lineage), val(header_length), val(transl_table)
 // GENOME_CLEAN receives: ..., path(genome_gz), val(taxonid), val(taxondb)
-//   → emits: ..., val(genome_fa_abs), val(taxonid)   [path as string; taxondb dropped]
+//   → emits: ..., path(genome_fa), val(taxonid)   [storeDir moves .fa; workflow maps to abs string]
 //   → writes <asmid>.fa to input_clean_genomes/ (storeDir; skip check targets this file)
 //   → purge/FCS intermediates written as side effects to input_clean_genomes/clean/
-// SRA_FETCH receives: ..., val(genome_fa), val(taxonid)
+// REPEATMODELER_RUN receives: val(species_tag), val(asmid), val(genome_fa)  [one per species]
+//   → emits: val(species_tag), path(rmlib)   [storeDir caches repeat_library/<species_tag>.RMlib.fasta]
+// REPEATMASKER_RUN receives: val(species_tag), ..., val(genome_fa), val(taxonid), path(rmlib)
+//   → emits: ..., path(masked_fa), val(taxonid)   [storeDir caches input_clean_genomes/<asmid>.masked.fasta]
+//   [skipped when --skip_repeatmasker; masked_fa falls back to unmasked .fa if .masked.fasta absent]
+// SRA_FETCH receives: ..., val(genome_fa), val(taxonid)   [only when --run_sra_fetch]
 //   → emits: ..., val(genome_fa), path(reads_dir)   [reads_dir may be empty]
-// FUNANNOTATE_TRAIN receives: ..., val(genome_fa), path(reads_dir)
+// FUNANNOTATE_TRAIN receives: ..., val(genome_fa), path(reads_dir)   [only when --run_sra_fetch]
 //   → emits: ..., val(genome_fa)   [reads deleted after training]
-// FUNANNOTATE_PREDICT receives: ..., val(genome_fa)
+// FUNANNOTATE_PREDICT receives: ..., val(genome_fa)   [from TRAIN or directly after masking/clean]
 
 // Download and extract NCBI taxdump once; storeDir caches it at params.taxondb so
 // subsequent runs skip this entirely.
@@ -92,7 +103,7 @@ process GENOME_CLEAN {
     output:
     tuple val(out), val(asmid), val(species), val(strain), val(locustag),
           val(busco_lineage), val(header_length), val(transl_table),
-          val("${launchDir}/input_clean_genomes/${asmid}.fa"), val(taxonid), emit: genome
+          path("${asmid}.fa"), val(taxonid), emit: genome
 
     script:
     """
@@ -112,6 +123,7 @@ process GENOME_CLEAN {
     	phylum=\$(echo ${taxonid} | taxonkit --data-dir \$TAXONKIT_DB lineage | taxonkit --data-dir \$TAXONKIT_DB reformat -f "{K}" | cut -f3 | taxonkit --data-dir \$TAXONKIT_DB name2taxid | uniq | cut -f2 | head -n 1)
 	# weird we are getting 2 lines from name2taxid when input is Fungi add the uniq/head -n 1 to ensure only one line
     fi
+    module unload taxonkit
     echo "[INFO] Phylum for ${asmid} (taxonid=${taxonid}): \$phylum"
     echo "[INFO] Decompressing and cleaning genome for ${asmid}..."
     pigz -dc ${genome_gz} > \$SCRATCH/${asmid}.raw.fa
@@ -134,6 +146,127 @@ process GENOME_CLEAN {
     mkdir -p ${launchDir}/input_clean_genomes/clean
     touch ${launchDir}/input_clean_genomes/clean/${asmid}.purge.fasta
     touch ${launchDir}/input_clean_genomes/clean/${asmid}.purge.fcs_gx-taxonomy.tsv
+    """
+}
+
+// Run RepeatModeler on one representative assembly per species to build a de-novo
+// repeat library.  storeDir caches the library so the process is skipped on re-runs
+// or when another assembly of the same species already produced it.
+//
+// Output naming convention:
+//   repeat_library/{species_tag}.{asmid}.RM_lib.fasta  — the canonical file (storeDir output)
+//   repeat_library/{species_tag}.RMlib.fasta           — symlink to the above (for downstream use)
+//   repeat_library/library_manifest.tsv                — records which asmid built each library
+process REPEATMODELER_RUN {
+    tag "$species_tag"
+
+    storeDir "${launchDir}/repeat_library"
+
+    cpus   16
+    memory '32 GB'
+    time   '72h'
+
+    input:
+    tuple val(species_tag), val(asmid), val(genome_fa)
+
+    output:
+    tuple val(species_tag), path("${species_tag}.${asmid}.RM_lib.fasta"), emit: rmlib
+
+    script:
+    """
+    module load RepeatModeler
+    DBNAME=${asmid}_rmdb
+    BuildDatabase -name \$DBNAME -engine ncbi ${genome_fa}
+    RepeatModeler -database \$DBNAME -threads ${task.cpus} -LTRStruct
+    if [ -f "\${DBNAME}-families.fa" ]; then
+        cp \${DBNAME}-families.fa ${species_tag}.${asmid}.RM_lib.fasta
+    else
+        echo "[WARN] RepeatModeler found no families for ${asmid}; creating empty library"
+        touch ${species_tag}.${asmid}.RM_lib.fasta
+    fi
+    pigz -dc ${launchDir}/lib/fungi_repeat.20170127.lib.gz >> ${species_tag}.${asmid}.RM_lib.fasta
+
+    # Copy to storeDir so the symlink target exists before Nextflow moves the declared output
+    mkdir -p ${launchDir}/repeat_library
+    cp ${species_tag}.${asmid}.RM_lib.fasta \
+        ${launchDir}/repeat_library/${species_tag}.${asmid}.RM_lib.fasta
+    # (Re-)create the convenience symlink; relative so it resolves within repeat_library/
+    ln -sf ${species_tag}.${asmid}.RM_lib.fasta \
+        ${launchDir}/repeat_library/${species_tag}.RMlib.fasta
+
+    # Append provenance record; initialise header on first entry
+    MANIFEST="${launchDir}/repeat_library/library_manifest.tsv"
+    if [ ! -f "\$MANIFEST" ]; then
+        printf "species_tag\tasmid\trmlib_file\ttimestamp\n" > "\$MANIFEST"
+    fi
+    printf "%s\t%s\t%s\t%s\n" \
+        "${species_tag}" "${asmid}" \
+        "${species_tag}.${asmid}.RM_lib.fasta" \
+        "\$(date -Iseconds)" >> "\$MANIFEST"
+    """
+
+    stub:
+    """
+    echo ">stub_repeat_${species_tag}" > ${species_tag}.${asmid}.RM_lib.fasta
+    pigz -dc ${launchDir}/lib/fungi_repeat.20170127.lib.gz >> ${species_tag}.${asmid}.RM_lib.fasta
+    mkdir -p ${launchDir}/repeat_library
+    cp ${species_tag}.${asmid}.RM_lib.fasta \
+        ${launchDir}/repeat_library/${species_tag}.${asmid}.RM_lib.fasta
+    ln -sf ${species_tag}.${asmid}.RM_lib.fasta \
+        ${launchDir}/repeat_library/${species_tag}.RMlib.fasta
+    MANIFEST="${launchDir}/repeat_library/library_manifest.tsv"
+    if [ ! -f "\$MANIFEST" ]; then
+        printf "species_tag\tasmid\trmlib_file\ttimestamp\n" > "\$MANIFEST"
+    fi
+    printf "%s\t%s\t%s\t%s\n" \
+        "${species_tag}" "${asmid}" \
+        "${species_tag}.${asmid}.RM_lib.fasta" \
+        "\$(date -Iseconds)" >> "\$MANIFEST"
+    """
+}
+
+// Soft-mask each assembly genome using the per-species repeat library produced by
+// REPEATMODELER_RUN.  storeDir caches the masked FASTA alongside the clean genome.
+// The full RepeatMasker output folder is written as a side effect to repeat_masker/<asmid>/.
+process REPEATMASKER_RUN {
+    tag "$asmid"
+
+    storeDir "${launchDir}/input_clean_genomes"
+
+    cpus   32
+    memory '24 GB'
+    time   '24h'
+
+    input:
+    tuple val(species_tag), val(out), val(asmid), val(species), val(strain), val(locustag),
+          val(busco_lineage), val(header_length), val(transl_table),
+          val(genome_fa), val(taxonid), path(rmlib)
+
+    output:
+    tuple val(out), val(asmid), val(species), val(strain), val(locustag),
+          val(busco_lineage), val(header_length), val(transl_table),
+          path("${asmid}.masked.fasta"), val(taxonid), emit: masked
+
+    script:
+    """
+    module load RepeatMasker
+    mkdir -p rm_out
+    RepeatMasker -lib ${rmlib} -pa ${task.cpus} -dir rm_out -noisy -xsmall ${genome_fa}
+    MASKED=rm_out/\$(basename ${genome_fa}).masked
+    if [ ! -f "\$MASKED" ]; then
+        echo "[WARN] RepeatMasker produced no .masked file; copying unmasked genome"
+        cp ${genome_fa} ${asmid}.masked.fasta
+    else
+        cp \$MASKED ${asmid}.masked.fasta
+    fi
+    mkdir -p ${launchDir}/repeat_masker/${asmid}
+    mv rm_out/* ${launchDir}/repeat_masker/${asmid}/ 2>/dev/null || true
+    """
+
+    stub:
+    """
+    echo ">stub_${asmid}_masked" > ${asmid}.masked.fasta
+    mkdir -p ${launchDir}/repeat_masker/${asmid}
     """
 }
 
@@ -160,8 +293,9 @@ process SRA_FETCH {
     script:
     """
     mkdir -p reads
-    module load entrez-direct
+    module load ncbi_edirect
     module load sratoolkit
+    module load parallel-fastq-dump
 
     ACCESSIONS=\$(esearch -db sra \
         -query "txid${taxonid}[Organism:noexp] AND RNA-Seq[Strategy] AND PAIRED[Layout] AND Illumina[Platform]" | \
@@ -179,10 +313,10 @@ process SRA_FETCH {
 
     for ACC in \$ACCESSIONS; do
         echo "[INFO] Downloading \$ACC ..."
-        parallel-fastq-dump --sra-id \$ACC --threads ${task.cpus} \\
+        parallel-fastq-dump --sra-id \$ACC --threads ${task.cpus} -X 500 \\
             --outdir reads/ --split-files --gzip --tmpdir \$TMPDIR || {
             echo "[WARN] Download failed for \$ACC, skipping"
-            rm -f reads/\${ACC}*.fastq.gz
+            #rm -f reads/\${ACC}*.fastq.gz
         }
     done
 
@@ -201,8 +335,8 @@ process FUNANNOTATE_TRAIN {
     tag "$out"
 
     cpus   16
-    memory '64 GB'
-    time   '24h'
+    memory '96 GB'
+    time   '120h'
 
     input:
     tuple val(out), val(asmid), val(species), val(strain), val(locustag),
@@ -215,16 +349,25 @@ process FUNANNOTATE_TRAIN {
           val(genome_fa)
 
     script:
+    def pasa_db_arg = params.pasa_mysql ? "--pasa_db mysql" : ""
     """
-    R1=(\$(ls ${reads_dir}/*_1.fastq.gz 2>/dev/null || true))
-
-    if [ \${#R1[@]} -eq 0 ]; then
-        echo "[INFO] No RNAseq reads for ${out}, skipping funannotate train"
+    # ── Skip if training output already present ───────────────────────────────
+    TRAIN_GFF3="${params.target}/${out}/training/funannotate_train.pasa.gff3"
+    if [ -f "\$TRAIN_GFF3" ]; then
+        echo "[INFO] Training already complete for ${out}; skipping"
         exit 0
     fi
 
+    # ── Detect reads ──────────────────────────────────────────────────────────
+    R1=(\$(ls ${reads_dir}/*_1.fastq.gz 2>/dev/null || true))
     R2=(\$(ls ${reads_dir}/*_2.fastq.gz 2>/dev/null || true))
-    if [ \${#R1[@]} -ne \${#R2[@]} ]; then
+    SE=(\$(ls ${reads_dir}/*.fastq.gz 2>/dev/null | grep -v '_[12]\\.fastq\\.gz\$' || true))
+
+    if [ \${#R1[@]} -eq 0 ] && [ \${#SE[@]} -eq 0 ]; then
+        echo "[INFO] No RNAseq reads for ${out}, skipping funannotate train"
+        exit 0
+    fi
+    if [ \${#R1[@]} -gt 0 ] && [ \${#R1[@]} -ne \${#R2[@]} ]; then
         echo "[WARN] Unequal R1/R2 counts for ${out} (R1=\${#R1[@]}, R2=\${#R2[@]}), skipping train"
         exit 0
     fi
@@ -238,16 +381,55 @@ process FUNANNOTATE_TRAIN {
     export FUNANNOTATE_DB=${params.funannotate_db}
     TMPDIR=\${SCRATCH:-/tmp}
 
-    echo "[INFO] Running funannotate train for ${out} with \${#R1[@]} read pair(s)"
+    # ── Optional per-task MariaDB for PASA ────────────────────────────────────
+    if [ "${params.pasa_mysql}" = "true" ]; then
+        RUNID=\$\$
+        MYSQL_SCRATCH=\$TMPDIR/mysql_\${RUNID}
+        mkdir -p \$MYSQL_SCRATCH/db \$MYSQL_SCRATCH/conf
+        rsync -a ${params.mysql_datadir}/mysql \$MYSQL_SCRATCH/db/ || \
+            { echo "ERROR: Failed to copy mysql data from ${params.mysql_datadir}" >&2; exit 1; }
+        cp ${params.pasa_conf_dir}/my.cnf \$MYSQL_SCRATCH/conf/my.cnf || \
+            { echo "ERROR: Failed to copy my.cnf" >&2; exit 1; }
+        MYHOSTNAME=\$(hostname -s)
+        PORT=\$(shuf -i3000-4999 -n1)
+        PASACONF=\$MYSQL_SCRATCH/conf/pasa-local-\${MYHOSTNAME}.config.txt
+        cp ${params.pasa_conf_dir}/conf.txt \$PASACONF
+        sed -i "s/^MYSQLSERVER.*\$/MYSQLSERVER=\${MYHOSTNAME}:\${PORT}/" \$PASACONF
+        perl -i -p -e "s/port = \\d+/port = \${PORT}/" \$MYSQL_SCRATCH/conf/my.cnf
+        export SINGULARITY_BINDPATH=\$TMPDIR
+        export PASACONF
+        stop_mysqldb() { singularity instance stop mysqldb\${RUNID} 2>/dev/null || true; }
+        trap "stop_mysqldb; exit 130" SIGHUP SIGINT SIGTERM
+        trap "stop_mysqldb" EXIT
+        module load singularity
+        singularity instance start --writable-tmpfs \\
+            -B \$MYSQL_SCRATCH/conf/my.cnf:/etc/mysql/my.cnf,\$MYSQL_SCRATCH/db/:/var/lib/mysql,\$MYSQL_SCRATCH/conf:/usr/conf \\
+            ${params.mariadb_sif} mysqldb\${RUNID} /usr/bin/mysqld_safe
+        sleep 5
+    fi
 
-    funannotate train -i ${genome_fa} -o ${params.target}/${out} \\
-        --left \${R1[@]} --right \${R2[@]} \\
-        --species "${species}" --strain "${strain}" \\
-        --cpus ${task.cpus} --memory "${task.memory}" \\
-        --tmpdir \$TMPDIR
+    # ── Run funannotate train ─────────────────────────────────────────────────
+    if [ \${#R1[@]} -gt 0 ]; then
+        echo "[INFO] Running funannotate train (paired-end) for ${out} with \${#R1[@]} read pair(s)"
+        funannotate train -i ${genome_fa} -o ${params.target}/${out} \\
+            --left \${R1[@]} --right \${R2[@]} \\
+            --species "${species}" --strain "${strain}" \\
+            --cpus ${task.cpus} --memory "${task.memory}" \\
+            --jaccard_clip --no-progress --min_coverage 4 \\
+            --header_length ${header_length} \\
+            --tmpdir \$TMPDIR ${pasa_db_arg}
+    else
+        echo "[INFO] Running funannotate train (single-end) for ${out} with \${#SE[@]} read file(s)"
+        funannotate train -i ${genome_fa} -o ${params.target}/${out} \\
+            --single \${SE[@]} \\
+            --species "${species}" --strain "${strain}" \\
+            --cpus ${task.cpus} --memory "${task.memory}" \\
+            --jaccard_clip --no-progress --min_coverage 4 \\
+            --header_length ${header_length} \\
+            --tmpdir \$TMPDIR ${pasa_db_arg}
+    fi
 
-    # Resolve and delete the original fastq files in the SRA_FETCH work directory
-    # to reclaim disk immediately; scratch dir itself is auto-cleaned by Nextflow.
+    # ── Reclaim SRA reads immediately ─────────────────────────────────────────
     REAL_READS=\$(readlink -f ${reads_dir})
     if [ "\$REAL_READS" != "${reads_dir}" ]; then
         rm -rf "\$REAL_READS"
@@ -258,6 +440,8 @@ process FUNANNOTATE_TRAIN {
     stub:
     """
     echo "[STUB] FUNANNOTATE_TRAIN stub for ${out} (reads_dir=${reads_dir})"
+    mkdir -p ${params.target}/${out}/training
+    touch ${params.target}/${out}/training/funannotate_train.pasa.gff3
     """
 }
 
@@ -568,9 +752,74 @@ workflow {
     GENOME_CLEAN(jobs.combine(taxondb_ch))
 
     if (!params.only_clean) {
-        SRA_FETCH(GENOME_CLEAN.out.genome)
-        FUNANNOTATE_TRAIN(SRA_FETCH.out.reads)
-        def predict_ch = FUNANNOTATE_TRAIN.out
+        // Convert path output to absolute-path string so downstream val(genome_fa) processes
+        // can reference the file directly without Nextflow re-staging it per-process.
+        def clean_genome_ch = GENOME_CLEAN.out.genome
+            .map { out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, taxonid ->
+                tuple(out, asmid, species, strain, locustag, busco, hlen, ttable,
+                      genome_fa.toAbsolutePath().toString(), taxonid)
+            }
+
+        // ── Repeat masking ────────────────────────────────────────────────────────
+        // predict_genome_ch carries the genome path to use for prediction — either
+        // the soft-masked genome (default) or the clean unmasked genome (--skip_repeatmasker).
+        def predict_genome_ch
+        if (!params.skip_repeatmasker) {
+            // Tag each assembly with species_tag for grouping and RM output naming.
+            def tagged_ch = clean_genome_ch
+                .map { out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, taxonid ->
+                    def species_tag = species.replaceAll(/\s+/, '_')
+                    tuple(species_tag, out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, taxonid)
+                }
+
+            // Run RepeatModeler once per species: group assemblies, pick the first.
+            def rm_model_input = tagged_ch
+                .map { species_tag, out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, taxonid ->
+                    tuple(species_tag, asmid, genome_fa)
+                }
+                .groupTuple(by: 0)
+                .map { species_tag, asmids, genome_fas ->
+                    tuple(species_tag, asmids[0], genome_fas[0])
+                }
+            REPEATMODELER_RUN(rm_model_input)
+
+            // Join per-species RM library back to every assembly, then run RepeatMasker.
+            REPEATMASKER_RUN(tagged_ch.join(REPEATMODELER_RUN.out.rmlib, by: 0))
+
+            predict_genome_ch = REPEATMASKER_RUN.out.masked
+                .map { out, asmid, species, strain, locustag, busco, hlen, ttable, masked_fa, taxonid ->
+                    tuple(out, asmid, species, strain, locustag, busco, hlen, ttable,
+                          masked_fa.toAbsolutePath().toString(), taxonid)
+                }
+        } else {
+            // --skip_repeatmasker: use masked genome if a prior run produced it, else unmasked.
+            predict_genome_ch = clean_genome_ch
+                .map { out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, taxonid ->
+                    def masked = file("${launchDir}/input_clean_genomes/${asmid}.masked.fasta")
+                    def use_fa = masked.exists() ? masked.toString() : genome_fa
+                    if (params.debug) {
+                        log.info "[DEBUG] ${asmid}: genome_fa=${use_fa} (masked=${masked.exists()})"
+                    }
+                    tuple(out, asmid, species, strain, locustag, busco, hlen, ttable, use_fa, taxonid)
+                }
+        }
+
+        // FUNANNOTATE_PREDICT input tuple drops taxonid (not needed after masking/clean).
+        // When SRA is enabled, TRAIN feeds PREDICT; otherwise PREDICT draws directly from
+        // predict_genome_ch so it always runs regardless of RNA-seq availability.
+        def predict_input_ch
+        if (params.run_sra_fetch) {
+            SRA_FETCH(predict_genome_ch)
+            FUNANNOTATE_TRAIN(SRA_FETCH.out.reads)
+            predict_input_ch = FUNANNOTATE_TRAIN.out
+        } else {
+            predict_input_ch = predict_genome_ch
+                .map { out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, _taxonid ->
+                    tuple(out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa)
+                }
+        }
+
+        def predict_ch = predict_input_ch
             .filter { out, _asmid, _sp, _st, _lt, _bl, _hl, _tt, _gfa ->
                 !file("${params.target}/${out}/predict_results/${out}.gbk").exists()
             }
