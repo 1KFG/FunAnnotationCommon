@@ -1,4 +1,4 @@
-ASMID,SPECIESIN,STRAIN,BIOPROJECT,NCBI_TAXONID,BUSCO_LINEAGE,PHYLUM,SUBPHYLUM,CLASS,SUBCLASS,ORDER,FAMILY,GENUS,SPECIES,TRANSL_TABLE,LOCUSTAG
+ASMID,SPECIES_IN,STRAIN,BIOPROJECT,NCBI_TAXONID,BUSCO_LINEAGE,PHYLUM,SUBPHYLUM,CLASS,SUBCLASS,ORDER,FAMILY,GENUS,SPECIES,TRANSL_TABLE,LOCUSTAG
 GCF_010015735.1_Aaoar1,Aaosphaeria arxii CBS 175.79,CBS 175.79,PRJNA234399,1450172,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,,Aaosphaeria,Aaosphaeria arxii,1,FF5840CF
 GCA_022813625.1_ASM2281362v1,Aaosphaeria pasadenensis,FJI-L9-BK-P1,PRJNA800051,3025424,dikarya,Ascomycota,,Dothideomycetes,,Pleosporales,,Aaosphaeria,Aaosphaeria pasadenensis,1,F2EE6837
 GCA_022606235.1_Abobie1,Abortiporus biennis,CIRM-BRFM 1778,PRJNA444028,137743,dikarya,Basidiomycota,,Agaricomycetes,,Polyporales,Podoscyphaceae,Abortiporus,Abortiporus biennis,1,F6291E57
@@ -18755,8 +18755,8 @@ GCA_013265775.1_ASM1326577v1,Saccharomyces uvarum,CBS 377,PRJNA522928,230603,dik
 GCA_019953615.1_ASM1995361v1,Saccharomyces uvarum,CBS 7001,PRJNA753102,230603,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Saccharomyces,Saccharomyces uvarum,1,F7C347CC
 GCA_027557585.1_ASM2755758v1,Saccharomyces uvarum,CBS7001,PRJNA882904,230603,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Saccharomyces,Saccharomyces uvarum,1,F1BBF90D
 GCA_918280685.1_yHAB521,Saccharomyces uvarum,CR10-E1,PRJEB48264,230603,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Saccharomyces,Saccharomyces uvarum,1,F51F10E7
-GCA_918251765.1_yHAB60,Saccharomyces uvarum,CRUB 1588,PRJEB48264,230603,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Saccharomyces,Saccharomyces uvarum,1,FFAAA3F9
-GCA_918298155.1_yHAB447,Saccharomyces uvarum,CRUB 1586,PRJEB48264,230603,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Saccharomyces,Saccharomyces uvarum,1,F2C44A7E
+GCA_918251765.1_yHAB60,Saccharomyces uvarum,"CRUB 1588,7",PRJEB48264,230603,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Saccharomyces,Saccharomyces uvarum,1,FFAAA3F9
+GCA_918298155.1_yHAB447,Saccharomyces uvarum,CRUB1586,PRJEB48264,230603,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Saccharomyces,Saccharomyces uvarum,1,F2C44A7E
 GCA_013180345.1_ASM1318034v1,Saccharomyces uvarum,DBVPG 7786,PRJNA522928,230603,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Saccharomyces,Saccharomyces uvarum,1,F9AE6F2F
 GCA_013180255.1_ASM1318025v1,Saccharomyces uvarum,DBVPG 7787,PRJNA522928,230603,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Saccharomyces,Saccharomyces uvarum,1,F0F08A02
 GCA_030504475.1_Suva_E1_HGU,Saccharomyces uvarum,E1,PRJNA970106,230603,dikarya,Ascomycota,,Saccharomycetes,,Saccharomycetales,Saccharomycetaceae,Saccharomyces,Saccharomyces uvarum,1,FD0DF8B3
