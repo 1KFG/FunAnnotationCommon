@@ -12,6 +12,7 @@ params.augustus_config = "${launchDir}/lib/augustus/3.5/config"
 params.funannotate_db  = "/bigdata/stajichlab/shared/lib/funannotate_db"
 params.min_contig_len  = 2000
 params.clean_script    = "${launchDir}/scripts/clean_genome_fa.py"
+params.fastq_hdr_script = "${launchDir}/scripts/fix_fastq_headers"
 params.sbt_template    = "${launchDir}/lib/template.sbt"
 params.debug           = false   // --debug: verbose logging in script + channel views
 params.n_test          = 0       // --n_test N: limit to first N samples (0 = all)
@@ -327,8 +328,9 @@ process SRA_FETCH {
                 continue
             }
             if [ -f reads/\${ACC}_1.fastq.gz ] && [ -f reads/\${ACC}_2.fastq.gz ]; then
-                scripts/fix_fastq_headers --read 1 reads/\${ACC}_1.fastq.gz | pigz -c >> ${species_tag}_R1.fastq.gz
-                scripts/fix_fastq_headers --read 2 reads/\${ACC}_2.fastq.gz | pigz >> ${species_tag}_R2.fastq.gz
+	    // if we could run these in parallel ? 
+                ${params.fastq_hdr_script} --read 1 reads/\${ACC}_1.fastq.gz | pigz -c >> ${species_tag}_R1.fastq.gz
+                ${params.fastq_hdr_script} --read 2 reads/\${ACC}_2.fastq.gz | pigz >> ${species_tag}_R2.fastq.gz
                 rm reads/\${ACC}_1.fastq.gz reads/\${ACC}_2.fastq.gz
             else
                 echo "[WARN] Missing pair for \$ACC after download, skipping"
@@ -398,17 +400,6 @@ process FUNANNOTATE_TRAIN {
     eval "\$(conda shell.bash hook)"
     module load funannotate
 
-    //module load CodingQuarry
-    //module load phobius
-    //module load signalp
-    //conda activate /opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x
-    //export TRINITYHOME=/opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x/opt/trinity-2.8.5
-    //export EVM_HOME=/opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x/opt/evidencemodeler-1.1.1
-    //export EGGNOG_DATA_DIR=/srv/projects/db/eggNOG/LATEST
-    //export GENEMARK_PATH=/opt/linux/rocky/8.x/x86_64/pkgs/genemarkESET/4.72_lic
-    //export PATH=\$GENEMARK_PATH:\$PATH
-    //[ -f /rhome/\${USER}/.gm_key ] || ln -sf /opt/linux/rocky/8.x/x86_64/pkgs/genemarkESET/4.72_lic/gm_key /rhome/\${USER}/.gm_key
-
     export AUGUSTUS_CONFIG_PATH=${params.augustus_config}
     export FUNANNOTATE_DB=${params.funannotate_db}
     TMPDIR=\${SCRATCH:-/tmp}
@@ -446,7 +437,8 @@ process FUNANNOTATE_TRAIN {
         --left ${r1} --right ${r2} \\
         --species "${species}" --strain "${strain}" \\
         --cpus ${task.cpus} --memory ${task.memory.toGiga()}G \\
-        --jaccard_clip --no-progress --min_coverage 4 
+        --header_length ${header_length} \\
+        --jaccard_clip --no-progress --min_coverage 4
         
     """
 
