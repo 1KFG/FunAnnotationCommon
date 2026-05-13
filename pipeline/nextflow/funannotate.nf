@@ -43,10 +43,12 @@ params.pasa_conf_dir = ""      // path to dir with my.cnf + conf.txt (required w
 // REPEATMASKER_RUN receives: val(species_tag), ..., val(genome_fa), val(taxonid), path(rmlib)
 //   → emits: ..., path(masked_fa), val(taxonid)   [storeDir caches input_clean_genomes/<asmid>.masked.fasta]
 //   [skipped when --skip_repeatmasker; masked_fa falls back to unmasked .fa if .masked.fasta absent]
-// SRA_FETCH receives: ..., val(genome_fa), val(taxonid)   [only when --run_sra_fetch]
-//   → emits: ..., val(genome_fa), path(reads_dir)   [reads_dir may be empty]
-// FUNANNOTATE_TRAIN receives: ..., val(genome_fa), path(reads_dir)   [only when --run_sra_fetch]
-//   → emits: ..., val(genome_fa)   [reads deleted after training]
+// SRA_FETCH receives: val(species_tag), val(taxonid)   [only when --run_sra_fetch; one per species]
+//   → emits: val(species_tag), path(r1.fastq.gz), path(r2.fastq.gz)
+//   → storeDir caches combined reads at rnaseq_reads/<species_tag>_{R1,R2}.fastq.gz
+//   → empty files (0 bytes) written when no RNA-seq found; TRAIN checks size to skip
+// FUNANNOTATE_TRAIN receives: ..., val(genome_fa), path(r1), path(r2)   [only when --run_sra_fetch]
+//   → emits: ..., val(genome_fa)   [reads remain in storeDir; TRAIN skips if r1 is empty]
 // FUNANNOTATE_PREDICT receives: ..., val(genome_fa)   [from TRAIN or directly after masking/clean]
 
 // Download and extract NCBI taxdump once; storeDir caches it at params.taxondb so
@@ -86,7 +88,7 @@ process SETUP_TAXONDB {
 process GENOME_CLEAN {
     tag "$asmid"
 
-    container '/rhome/jstajich/projects/AAFTF/AAFTF_v0.6.1-signed.sif'
+    // container '/rhome/jstajich/projects/AAFTF/AAFTF_v0.6.1-signed.sif'
 
     // Nextflow skips this task when input_clean_genomes/<asmid>.fa already exists.
     storeDir "${launchDir}/input_clean_genomes"
@@ -111,21 +113,24 @@ process GENOME_CLEAN {
         echo "ERROR: genome_gz not found at path: ${genome_gz}" >&2
         exit 1
     fi
-    module load AAFTF
 
+     source /etc/profile.d/modules.sh 2>/dev/null || true
+     module load miniconda3
+     eval "\$(conda shell.bash hook)"
     # Ensure /dev/shm/gxdb is present on this node; register for cleanup when done.
     source ${launchDir}/scripts/setup_fcs_shm.sh
     SCRATCH=\$(printf '%s' "\${SCRATCH}" | tr -d '\\n\\r')
     TAXONKIT_DB=${taxondb}
     module load taxonkit
-    phylum=\$(echo ${taxonid} | taxonkit --data-dir \$TAXONKIT_DB lineage | taxonkit --data-dir \$TAXONKIT_DB reformat -f "{p}" | cut -f3 | taxonkit --data-dir \$TAXONKIT_DB name2taxid | cut -f2 | uniq | head -n 1)
+    phylum=\$(echo ${taxonid} | taxonkit --data-dir \$TAXONKIT_DB lineage | taxonkit --data-dir \$TAXONKIT_DB reformat -f "{p}" --output-ambiguous-result | cut -f3 | taxonkit --data-dir \$TAXONKIT_DB name2taxid | cut -f2 | uniq | head -n 1)
     if [ -z "\$phylum" ]; then
-    	phylum=\$(echo ${taxonid} | taxonkit --data-dir \$TAXONKIT_DB lineage | taxonkit --data-dir \$TAXONKIT_DB reformat -f "{K}" | cut -f3 | taxonkit --data-dir \$TAXONKIT_DB name2taxid | uniq | cut -f2 | head -n 1)
+    	phylum=\$(echo ${taxonid} | taxonkit --data-dir \$TAXONKIT_DB lineage | taxonkit --data-dir \$TAXONKIT_DB reformat -f "{K}" --output-ambiguous-result | cut -f3 | taxonkit --data-dir \$TAXONKIT_DB name2taxid | uniq | cut -f2 | head -n 1)
 	# weird we are getting 2 lines from name2taxid when input is Fungi add the uniq/head -n 1 to ensure only one line
     fi
     module unload taxonkit
     echo "[INFO] Phylum for ${asmid} (taxonid=${taxonid}): \$phylum"
     echo "[INFO] Decompressing and cleaning genome for ${asmid}..."
+    module load AAFTF
     pigz -dc ${genome_gz} > \$SCRATCH/${asmid}.raw.fa
     AAFTF fcs_gx_purge --db /dev/shm/gxdb/all \
         -i \$SCRATCH/${asmid}.raw.fa --cpus ${task.cpus} \
@@ -271,31 +276,34 @@ process REPEATMASKER_RUN {
 }
 
 // Search NCBI SRA for paired-end RNA-seq runs for this taxon and download up to
-// params.max_rnaseq_runs sets.  Emits a reads/ directory (possibly empty) so
-// FUNANNOTATE_TRAIN always has a consistent input regardless of SRA availability.
+// params.max_rnaseq_runs sets.  All downloaded pairs are concatenated (per-accession
+// order) into two species-named files cached in rnaseq_reads/ via storeDir.
+// Empty files (0 bytes) are written when no RNA-seq data is found so the cache is
+// populated and FUNANNOTATE_TRAIN can detect the no-data case without re-querying.
 process SRA_FETCH {
-    tag "$asmid"
+    tag "$species_tag"
+
+    storeDir "${launchDir}/rnaseq_reads"
 
     cpus   8
     memory '16 GB'
     time   '6h'
 
     input:
-    tuple val(out), val(asmid), val(species), val(strain), val(locustag),
-          val(busco_lineage), val(header_length), val(transl_table),
-          val(genome_fa), val(taxonid)
+    tuple val(species_tag), val(taxonid)
 
     output:
-    tuple val(out), val(asmid), val(species), val(strain), val(locustag),
-          val(busco_lineage), val(header_length), val(transl_table),
-          val(genome_fa), path("reads"), emit: reads
+    tuple val(species_tag), path("${species_tag}_R1.fastq.gz"), path("${species_tag}_R2.fastq.gz"), emit: reads
 
     script:
     """
-    mkdir -p reads
     module load ncbi_edirect
     module load sratoolkit
     module load parallel-fastq-dump
+
+    # Output files must always exist (storeDir requirement).
+    : > ${species_tag}_R1.fastq.gz
+    : > ${species_tag}_R2.fastq.gz
 
     ACCESSIONS=\$(esearch -db sra \
         -query "txid${taxonid}[Organism:noexp] AND RNA-Seq[Strategy] AND PAIRED[Layout] AND Illumina[Platform]" | \
@@ -304,30 +312,51 @@ process SRA_FETCH {
         sort -u | head -n ${params.max_rnaseq_runs} || true)
 
     if [ -z "\$ACCESSIONS" ]; then
-        echo "[INFO] No paired-end RNA-seq runs found for ${species} (taxonid=${taxonid})"
-        exit 0
+        echo "[INFO] No paired-end RNA-seq runs found for ${species_tag} (taxonid=${taxonid})"
+    else
+        echo "[INFO] SRA accessions for ${species_tag}: \$ACCESSIONS"
+        TMPDIR=\${SCRATCH:-/tmp}
+        mkdir -p reads
+
+        # Download and concatenate in accession order so R1/R2 stay matched.
+        for ACC in \$ACCESSIONS; do
+            echo "[INFO] Downloading \$ACC ..."
+            parallel-fastq-dump --sra-id \$ACC --threads ${task.cpus} \
+                --outdir reads/ --split-files --gzip --tmpdir \$TMPDIR || {
+                echo "[WARN] Download failed for \$ACC, skipping"
+                continue
+            }
+            if [ -f reads/\${ACC}_1.fastq.gz ] && [ -f reads/\${ACC}_2.fastq.gz ]; then
+                scripts/fix_fastq_headers --read 1 reads/\${ACC}_1.fastq.gz | pigz -c >> ${species_tag}_R1.fastq.gz
+                scripts/fix_fastq_headers --read 2 reads/\${ACC}_2.fastq.gz | pigz >> ${species_tag}_R2.fastq.gz
+                rm reads/\${ACC}_1.fastq.gz reads/\${ACC}_2.fastq.gz
+            else
+                echo "[WARN] Missing pair for \$ACC after download, skipping"
+            fi
+        done
+        rm -rf reads
+
+        NPAIRS=\$(zcat ${species_tag}_R1.fastq.gz 2>/dev/null | awk 'NR%4==1' | wc -l || echo 0)
+        echo "[INFO] Combined \$NPAIRS read pairs for ${species_tag}"
+
+        # Append provenance manifest.
+	mkdir -p "${launchDir}/rnaseq_reads"
+        MANIFEST="${launchDir}/rnaseq_reads/rnaseq_manifest.tsv"
+        if [ ! -f "\$MANIFEST" ]; then
+            printf "species_tag\ttaxonid\taccessions\ttimestamp\n" > "\$MANIFEST"
+        fi
+        printf "%s\t%s\t%s\t%s\n" \
+            "${species_tag}" "${taxonid}" \
+            "\$(echo \$ACCESSIONS | tr '\n' ',')" \
+            "\$(date -Iseconds)" >> "\$MANIFEST"
     fi
-
-    echo "[INFO] SRA accessions for ${species}: \$ACCESSIONS"
-    TMPDIR=\${SCRATCH:-/tmp}
-
-    for ACC in \$ACCESSIONS; do
-        echo "[INFO] Downloading \$ACC ..."
-        parallel-fastq-dump --sra-id \$ACC --threads ${task.cpus} -X 500 \\
-            --outdir reads/ --split-files --gzip --tmpdir \$TMPDIR || {
-            echo "[WARN] Download failed for \$ACC, skipping"
-            #rm -f reads/\${ACC}*.fastq.gz
-        }
-    done
-
-    NPAIRS=\$(ls reads/*_1.fastq.gz 2>/dev/null | wc -l)
-    echo "[INFO] Downloaded \$NPAIRS paired read set(s) for ${species}"
     """
 
     stub:
     """
-    mkdir -p reads
-    echo "[STUB] SRA_FETCH noop for ${out} (taxonid=${taxonid})"
+    : > ${species_tag}_R1.fastq.gz
+    : > ${species_tag}_R2.fastq.gz
+    echo "[STUB] SRA_FETCH noop for ${species_tag} (taxonid=${taxonid})"
     """
 }
 
@@ -341,7 +370,7 @@ process FUNANNOTATE_TRAIN {
     input:
     tuple val(out), val(asmid), val(species), val(strain), val(locustag),
           val(busco_lineage), val(header_length), val(transl_table),
-          val(genome_fa), path(reads_dir)
+          val(genome_fa), path(r1), path(r2)
 
     output:
     tuple val(out), val(asmid), val(species), val(strain), val(locustag),
@@ -351,6 +380,12 @@ process FUNANNOTATE_TRAIN {
     script:
     def pasa_db_arg = params.pasa_mysql ? "--pasa_db mysql" : ""
     """
+    # ── Skip if no reads (empty marker file from SRA_FETCH) ──────────────────
+    if [ ! -s "${r1}" ]; then
+        echo "[INFO] No RNAseq reads for ${out}, skipping funannotate train"
+        exit 0
+    fi
+
     # ── Skip if training output already present ───────────────────────────────
     TRAIN_GFF3="${params.target}/${out}/training/funannotate_train.pasa.gff3"
     if [ -f "\$TRAIN_GFF3" ]; then
@@ -358,24 +393,21 @@ process FUNANNOTATE_TRAIN {
         exit 0
     fi
 
-    # ── Detect reads ──────────────────────────────────────────────────────────
-    R1=(\$(ls ${reads_dir}/*_1.fastq.gz 2>/dev/null || true))
-    R2=(\$(ls ${reads_dir}/*_2.fastq.gz 2>/dev/null || true))
-    SE=(\$(ls ${reads_dir}/*.fastq.gz 2>/dev/null | grep -v '_[12]\\.fastq\\.gz\$' || true))
-
-    if [ \${#R1[@]} -eq 0 ] && [ \${#SE[@]} -eq 0 ]; then
-        echo "[INFO] No RNAseq reads for ${out}, skipping funannotate train"
-        exit 0
-    fi
-    if [ \${#R1[@]} -gt 0 ] && [ \${#R1[@]} -ne \${#R2[@]} ]; then
-        echo "[WARN] Unequal R1/R2 counts for ${out} (R1=\${#R1[@]}, R2=\${#R2[@]}), skipping train"
-        exit 0
-    fi
-
     source /etc/profile.d/modules.sh 2>/dev/null || true
     module load miniconda3
     eval "\$(conda shell.bash hook)"
     module load funannotate
+
+    //module load CodingQuarry
+    //module load phobius
+    //module load signalp
+    //conda activate /opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x
+    //export TRINITYHOME=/opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x/opt/trinity-2.8.5
+    //export EVM_HOME=/opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x/opt/evidencemodeler-1.1.1
+    //export EGGNOG_DATA_DIR=/srv/projects/db/eggNOG/LATEST
+    //export GENEMARK_PATH=/opt/linux/rocky/8.x/x86_64/pkgs/genemarkESET/4.72_lic
+    //export PATH=\$GENEMARK_PATH:\$PATH
+    //[ -f /rhome/\${USER}/.gm_key ] || ln -sf /opt/linux/rocky/8.x/x86_64/pkgs/genemarkESET/4.72_lic/gm_key /rhome/\${USER}/.gm_key
 
     export AUGUSTUS_CONFIG_PATH=${params.augustus_config}
     export FUNANNOTATE_DB=${params.funannotate_db}
@@ -409,37 +441,18 @@ process FUNANNOTATE_TRAIN {
     fi
 
     # ── Run funannotate train ─────────────────────────────────────────────────
-    if [ \${#R1[@]} -gt 0 ]; then
-        echo "[INFO] Running funannotate train (paired-end) for ${out} with \${#R1[@]} read pair(s)"
-        funannotate train -i ${genome_fa} -o ${params.target}/${out} \\
-            --left \${R1[@]} --right \${R2[@]} \\
-            --species "${species}" --strain "${strain}" \\
-            --cpus ${task.cpus} --memory "${task.memory}" \\
-            --jaccard_clip --no-progress --min_coverage 4 \\
-            --header_length ${header_length} \\
-            --tmpdir \$TMPDIR ${pasa_db_arg}
-    else
-        echo "[INFO] Running funannotate train (single-end) for ${out} with \${#SE[@]} read file(s)"
-        funannotate train -i ${genome_fa} -o ${params.target}/${out} \\
-            --single \${SE[@]} \\
-            --species "${species}" --strain "${strain}" \\
-            --cpus ${task.cpus} --memory "${task.memory}" \\
-            --jaccard_clip --no-progress --min_coverage 4 \\
-            --header_length ${header_length} \\
-            --tmpdir \$TMPDIR ${pasa_db_arg}
-    fi
-
-    # ── Reclaim SRA reads immediately ─────────────────────────────────────────
-    REAL_READS=\$(readlink -f ${reads_dir})
-    if [ "\$REAL_READS" != "${reads_dir}" ]; then
-        rm -rf "\$REAL_READS"
-        echo "[INFO] Removed SRA reads at \$REAL_READS"
-    fi
+    echo "[INFO] Running funannotate train for ${out}"
+    funannotate train -i ${genome_fa} -o ${params.target}/${out} \\
+        --left ${r1} --right ${r2} \\
+        --species "${species}" --strain "${strain}" \\
+        --cpus ${task.cpus} --memory ${task.memory.toGiga()}G \\
+        --jaccard_clip --no-progress --min_coverage 4 
+        
     """
 
     stub:
     """
-    echo "[STUB] FUNANNOTATE_TRAIN stub for ${out} (reads_dir=${reads_dir})"
+    echo "[STUB] FUNANNOTATE_TRAIN stub for ${out} (r1=${r1}, r2=${r2})"
     mkdir -p ${params.target}/${out}/training
     touch ${params.target}/${out}/training/funannotate_train.pasa.gff3
     """
@@ -469,7 +482,16 @@ process FUNANNOTATE_PREDICT {
     source /etc/profile.d/modules.sh 2>/dev/null || true
     module load miniconda3
     eval "\$(conda shell.bash hook)"
-    module load funannotate
+    module load CodingQuarry
+    module load phobius
+    module load signalp
+    conda activate /opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x
+    export TRINITYHOME=/opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x/opt/trinity-2.8.5
+    export EVM_HOME=/opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x/opt/evidencemodeler-1.1.1
+    export EGGNOG_DATA_DIR=/srv/projects/db/eggNOG/LATEST
+    export GENEMARK_PATH=/opt/linux/rocky/8.x/x86_64/pkgs/genemarkESET/4.72_lic
+    export PATH=\$GENEMARK_PATH:\$PATH
+    [ -f /rhome/\${USER}/.gm_key ] || ln -sf /opt/linux/rocky/8.x/x86_64/pkgs/genemarkESET/4.72_lic/gm_key /rhome/\${USER}/.gm_key
 
     export AUGUSTUS_CONFIG_PATH=${params.augustus_config}
     export FUNANNOTATE_DB=${params.funannotate_db}
@@ -662,7 +684,16 @@ process FUNANNOTATE_ANNOTATE {
     source /etc/profile.d/modules.sh 2>/dev/null || true
     module load miniconda3
     eval "\$(conda shell.bash hook)"
-    module load funannotate
+    module load CodingQuarry
+    module load phobius
+    module load signalp
+    conda activate /opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x
+    export TRINITYHOME=/opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x/opt/trinity-2.8.5
+    export EVM_HOME=/opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x/opt/evidencemodeler-1.1.1
+    export EGGNOG_DATA_DIR=/srv/projects/db/eggNOG/LATEST
+    export GENEMARK_PATH=/opt/linux/rocky/8.x/x86_64/pkgs/genemarkESET/4.72_lic
+    export PATH=\$GENEMARK_PATH:\$PATH
+    [ -f /rhome/\${USER}/.gm_key ] || ln -sf /opt/linux/rocky/8.x/x86_64/pkgs/genemarkESET/4.72_lic/gm_key /rhome/\${USER}/.gm_key
 
     export AUGUSTUS_CONFIG_PATH=${params.augustus_config}
     export FUNANNOTATE_DB=${params.funannotate_db}
@@ -805,12 +836,34 @@ workflow {
         }
 
         // FUNANNOTATE_PREDICT input tuple drops taxonid (not needed after masking/clean).
-        // When SRA is enabled, TRAIN feeds PREDICT; otherwise PREDICT draws directly from
-        // predict_genome_ch so it always runs regardless of RNA-seq availability.
+        // When SRA is enabled, SRA_FETCH runs once per species (grouped like RepeatModeler),
+        // its reads are joined back per-assembly, then TRAIN feeds PREDICT.
+        // TRAIN skips internally when the species has no RNA-seq data (empty R1 marker).
         def predict_input_ch
         if (params.run_sra_fetch) {
-            SRA_FETCH(predict_genome_ch)
-            FUNANNOTATE_TRAIN(SRA_FETCH.out.reads)
+            // Build per-species input: group assemblies, keep first taxonid per species.
+            def sra_input = predict_genome_ch
+                .map { out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, taxonid ->
+                    def species_tag = species.replaceAll(/\s+/, '_')
+                    tuple(species_tag, taxonid)
+                }
+                .groupTuple(by: 0)
+                .map { species_tag, taxonids -> tuple(species_tag, taxonids[0]) }
+
+            SRA_FETCH(sra_input)
+
+            // Join per-species reads back to every assembly, then pass to TRAIN.
+            def train_input = predict_genome_ch
+                .map { out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, taxonid ->
+                    def species_tag = species.replaceAll(/\s+/, '_')
+                    tuple(species_tag, out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa)
+                }
+                .join(SRA_FETCH.out.reads, by: 0)
+                .map { species_tag, out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, r1, r2 ->
+                    tuple(out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, r1, r2)
+                }
+
+            FUNANNOTATE_TRAIN(train_input)
             predict_input_ch = FUNANNOTATE_TRAIN.out
         } else {
             predict_input_ch = predict_genome_ch
