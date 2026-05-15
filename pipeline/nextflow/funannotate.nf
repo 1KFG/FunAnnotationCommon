@@ -28,8 +28,8 @@ params.run_sra_fetch   = true    // --run_sra_fetch false: skip SRA download + f
 params.skip_repeatmasker = false // --skip_repeatmasker: skip RepeatModeler+RepeatMasker steps
 params.pasa_mysql    = false   // --pasa_mysql: start a per-task MariaDB instance for PASA
 params.mariadb_sif   = "/bigdata/stajichlab/shared/lib/mariadb/mariadb.sif"
-params.mysql_datadir = ""      // path to template MySQL data dir (required with --pasa_mysql)
-params.pasa_conf_dir = ""      // path to dir with my.cnf + conf.txt (required with --pasa_mysql)
+params.mysql_datadir = "/bigdata/stajichlab/shared/mysql/db/mysql"      // path to template MySQL data dir (required with --pasa_mysql)
+params.pasa_conf_dir = "/rhome/jstajich/.pasa/pasa_conf/"      // path to dir with my.cnf + conf.txt (required with --pasa_mysql)
 
 
 // Metadata tuple order used throughout:
@@ -286,9 +286,9 @@ process SRA_FETCH {
 
     storeDir "${launchDir}/rnaseq_reads"
 
-    cpus   8
-    memory '16 GB'
-    time   '6h'
+    cpus   32
+    memory '64 GB'
+    time   '2h'
 
     input:
     tuple val(species_tag), val(taxonid)
@@ -380,7 +380,7 @@ process FUNANNOTATE_TRAIN {
           val(genome_fa)
 
     script:
-    def pasa_db_arg = params.pasa_mysql ? "--pasa_db mysql" : ""
+    def pasa_db_arg = "--pasa_db sqlite"
     """
     # ── Skip if no reads (empty marker file from SRA_FETCH) ──────────────────
     if [ ! -s "${r1}" ]; then
@@ -403,7 +403,8 @@ process FUNANNOTATE_TRAIN {
     export AUGUSTUS_CONFIG_PATH=${params.augustus_config}
     export FUNANNOTATE_DB=${params.funannotate_db}
     TMPDIR=\${SCRATCH:-/tmp}
-
+    export PASACONF=""
+    pasa_db_arg="--pasa_db sqlite"
     # ── Optional per-task MariaDB for PASA ────────────────────────────────────
     if [ "${params.pasa_mysql}" = "true" ]; then
         RUNID=\$\$
@@ -415,12 +416,11 @@ process FUNANNOTATE_TRAIN {
             { echo "ERROR: Failed to copy my.cnf" >&2; exit 1; }
         MYHOSTNAME=\$(hostname -s)
         PORT=\$(shuf -i3000-4999 -n1)
-        PASACONF=\$MYSQL_SCRATCH/conf/pasa-local-\${MYHOSTNAME}.config.txt
+        export PASACONF=\$MYSQL_SCRATCH/conf/pasa-local-\${MYHOSTNAME}.config.txt
         cp ${params.pasa_conf_dir}/conf.txt \$PASACONF
         sed -i "s/^MYSQLSERVER.*\$/MYSQLSERVER=\${MYHOSTNAME}:\${PORT}/" \$PASACONF
         perl -i -p -e "s/port = \\d+/port = \${PORT}/" \$MYSQL_SCRATCH/conf/my.cnf
         export SINGULARITY_BINDPATH=\$TMPDIR
-        export PASACONF
         stop_mysqldb() { singularity instance stop mysqldb\${RUNID} 2>/dev/null || true; }
         trap "stop_mysqldb; exit 130" SIGHUP SIGINT SIGTERM
         trap "stop_mysqldb" EXIT
@@ -428,17 +428,21 @@ process FUNANNOTATE_TRAIN {
         singularity instance start --writable-tmpfs \\
             -B \$MYSQL_SCRATCH/conf/my.cnf:/etc/mysql/my.cnf,\$MYSQL_SCRATCH/db/:/var/lib/mysql,\$MYSQL_SCRATCH/conf:/usr/conf \\
             ${params.mariadb_sif} mysqldb\${RUNID} /usr/bin/mysqld_safe
+        pasa_db_arg="--pasa_db mysql --pasa_mysql_port \${PORT} --pasa_conf \${PASACONF}"
         sleep 5
     fi
+    echo "[DEBUG] PASACONF is \$PASACONF"
+    echo "[DEBUG] pasa_db_arg: \$pasa_db_arg"
 
     # ── Run funannotate train ─────────────────────────────────────────────────
     echo "[INFO] Running funannotate train for ${out}"
     funannotate train -i ${genome_fa} -o ${params.target}/${out} \\
-        --left ${r1} --right ${r2} \\
+        --left ${r1} --right ${r2} --aligners minimap2 \\
         --species "${species}" --strain "${strain}" \\
         --cpus ${task.cpus} --memory ${task.memory.toGiga()}G \\
         --header_length ${header_length} \\
-        --jaccard_clip --no-progress --min_coverage 4
+        --jaccard_clip --no-progress --min_coverage 4 \\
+        \$pasa_db_arg
         
     """
 
@@ -474,17 +478,7 @@ process FUNANNOTATE_PREDICT {
     source /etc/profile.d/modules.sh 2>/dev/null || true
     module load miniconda3
     eval "\$(conda shell.bash hook)"
-    module load CodingQuarry
-    module load phobius
-    module load signalp
-    conda activate /opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x
-    export TRINITYHOME=/opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x/opt/trinity-2.8.5
-    export EVM_HOME=/opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x/opt/evidencemodeler-1.1.1
-    export EGGNOG_DATA_DIR=/srv/projects/db/eggNOG/LATEST
-    export GENEMARK_PATH=/opt/linux/rocky/8.x/x86_64/pkgs/genemarkESET/4.72_lic
-    export PATH=\$GENEMARK_PATH:\$PATH
-    [ -f /rhome/\${USER}/.gm_key ] || ln -sf /opt/linux/rocky/8.x/x86_64/pkgs/genemarkESET/4.72_lic/gm_key /rhome/\${USER}/.gm_key
-
+    module load funannotate   
     export AUGUSTUS_CONFIG_PATH=${params.augustus_config}
     export FUNANNOTATE_DB=${params.funannotate_db}
     TMPDIR=\${SCRATCH:-/tmp}
