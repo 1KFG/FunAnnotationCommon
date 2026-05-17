@@ -684,6 +684,7 @@ process FUNANNOTATE_ANNOTATE {
         --species "${species}" --strain "${strain}" \\
         --busco_db ${busco_lineage} --rename ${locustag} \\
         --sbt ${params.sbt_template} \\
+        --header_length ${header_length} \\
         ${iprArg} ${spArg} ${antiSmArg} \\
         --cpu ${task.cpus} --tmpdir \$TMPDIR
 
@@ -844,8 +845,20 @@ workflow {
                     tuple(out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, r1, r2)
                 }
 
-            FUNANNOTATE_TRAIN(train_input)
-            predict_input_ch = FUNANNOTATE_TRAIN.out
+            // Skip TRAIN at the channel level when pasa.gff3 already exists,
+            // so no SLURM job is submitted for already-trained assemblies.
+            def train_todo = train_input.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt, _gfa, _r1, _r2 ->
+                !file("${params.target}/${out}/training/funannotate_train.pasa.gff3").exists()
+            }
+            def train_done = train_input
+                .filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt, _gfa, _r1, _r2 ->
+                    file("${params.target}/${out}/training/funannotate_train.pasa.gff3").exists()
+                }
+                .map { out, asmid, sp, st, lt, bl, hl, tt, genome_fa, _r1, _r2 ->
+                    tuple(out, asmid, sp, st, lt, bl, hl, tt, genome_fa)
+                }
+            FUNANNOTATE_TRAIN(train_todo)
+            predict_input_ch = FUNANNOTATE_TRAIN.out.mix(train_done)
         } else {
             predict_input_ch = predict_genome_ch
                 .map { out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, _taxonid ->
