@@ -891,12 +891,14 @@ workflow {
         def annotate_ready_ch = postpredict
 
         if (params.run_antismash) {
-            def asDoneCheck = { String out ->
+            def as_todo = annotate_ready_ch.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt ->
+                def asDir = file("${params.target}/${out}/antismash_local")
+                !(asDir.isDirectory() && asDir.list()?.any { it.endsWith('.json') || it.endsWith('.json.gz') })
+            }
+            def as_done = annotate_ready_ch.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt ->
                 def asDir = file("${params.target}/${out}/antismash_local")
                 asDir.isDirectory() && asDir.list()?.any { it.endsWith('.json') || it.endsWith('.json.gz') }
             }
-            def as_todo = annotate_ready_ch.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt -> !asDoneCheck(out) }
-            def as_done = annotate_ready_ch.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt ->  asDoneCheck(out) }
             ANTISMASH_RUN(as_todo)
             def as_completed = ANTISMASH_RUN.out
                 .map { out, _files -> tuple(out, 'done') }
