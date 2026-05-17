@@ -19,9 +19,10 @@ params.n_test          = 0       // --n_test N: limit to first N samples (0 = al
 params.max_cpus        = 64 // --max_cpus N: total CPUs for local executor
 params.suppress        = ""      // --suppress path/to/file: ASMID per line, optional comma+comment; # = comment line
 params.max_rnaseq_runs = 4       // --max_rnaseq_runs N: max paired-end SRA sets to download per species
-params.run_antismash   = false   // --run_antismash: run antiSMASH BGC detection after predict
+params.run_antismash   = false   // --run_antismash: run antiSMASH BGC detection before funannotate annotate
 params.run_interpro    = false   // --run_interpro: run InterProScan before funannotate annotate
 params.run_signalp     = false   // --run_signalp: run SignalP 6 (requires GPU node) before funannotate annotate
+params.run_annotate    = true    // --run_annotate false: skip funannotate annotate (predict-only run)
 params.antismash_taxon = "fungi" // --antismash_taxon: antiSMASH --taxon value
 params.only_clean      = false   // --only_clean: stop after GENOME_CLEAN (skip prediction and all post-predict steps)
 params.run_sra_fetch   = true    // --run_sra_fetch false: skip SRA download + funannotate train
@@ -554,6 +555,7 @@ process ANTISMASH_RUN {
     module load miniconda3
     eval "\$(conda shell.bash hook)"
     module load antismash
+    mkdir -p ${out}/antismash_local
     antismash --taxon ${params.antismash_taxon} \\
         --output-dir ${out}/antismash_local \\
         --genefinding-tool none \\
@@ -666,20 +668,13 @@ process FUNANNOTATE_ANNOTATE {
     def iprArg  = ipr.exists()     ? "--iprscan ${ipr}"    : ""
     def sp      = file("${params.target}/${out}/annotate_misc/signalp.results.txt")
     def spArg   = sp.exists()      ? "--signalp ${sp}"     : ""
+    def antiSm    = file("${params.target}/${out}/antismash_local/${out}.gbk")
+    def antiSmArg = antiSm.exists() ? "--antismash ${antiSm}" : ""
     """
     source /etc/profile.d/modules.sh 2>/dev/null || true
     module load miniconda3
     eval "\$(conda shell.bash hook)"
-    module load CodingQuarry
-    module load phobius
-    module load signalp
-    conda activate /opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x
-    export TRINITYHOME=/opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x/opt/trinity-2.8.5
-    export EVM_HOME=/opt/linux/rocky/8.x/x86_64/pkgs/funannotate/1.8.x/opt/evidencemodeler-1.1.1
-    export EGGNOG_DATA_DIR=/srv/projects/db/eggNOG/LATEST
-    export GENEMARK_PATH=/opt/linux/rocky/8.x/x86_64/pkgs/genemarkESET/4.72_lic
-    export PATH=\$GENEMARK_PATH:\$PATH
-    [ -f /rhome/\${USER}/.gm_key ] || ln -sf /opt/linux/rocky/8.x/x86_64/pkgs/genemarkESET/4.72_lic/gm_key /rhome/\${USER}/.gm_key
+    module load funannotate
 
     export AUGUSTUS_CONFIG_PATH=${params.augustus_config}
     export FUNANNOTATE_DB=${params.funannotate_db}
@@ -689,7 +684,7 @@ process FUNANNOTATE_ANNOTATE {
         --species "${species}" --strain "${strain}" \\
         --busco_db ${busco_lineage} --rename ${locustag} \\
         --sbt ${params.sbt_template} \\
-        ${iprArg} ${spArg} \\
+        ${iprArg} ${spArg} ${antiSmArg} \\
         --cpu ${task.cpus} --tmpdir \$TMPDIR
 
     EXPECTED_GBK="${out}/annotate_results/${out}.gbk"
@@ -801,7 +796,7 @@ workflow {
             REPEATMODELER_RUN(rm_model_input)
 
             // Join per-species RM library back to every assembly, then run RepeatMasker.
-            REPEATMASKER_RUN(tagged_ch.join(REPEATMODELER_RUN.out.rmlib, by: 0))
+            REPEATMASKER_RUN(tagged_ch.combine(REPEATMODELER_RUN.out.rmlib, by: 0))
 
             predict_genome_ch = REPEATMASKER_RUN.out.masked
                 .map { out, asmid, species, strain, locustag, busco, hlen, ttable, masked_fa, taxonid ->
@@ -844,7 +839,7 @@ workflow {
                     def species_tag = species.replaceAll(/\s+/, '_')
                     tuple(species_tag, out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa)
                 }
-                .join(SRA_FETCH.out.reads, by: 0)
+                .combine(SRA_FETCH.out.reads, by: 0)
                 .map { species_tag, out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, r1, r2 ->
                     tuple(out, asmid, species, strain, locustag, busco, hlen, ttable, genome_fa, r1, r2)
                 }
@@ -864,8 +859,10 @@ workflow {
             }
         FUNANNOTATE_PREDICT(predict_ch)
 
-        // ── Post-predict steps ────────────────────────────────────────────────────
-        // Independent channel parse so already-predicted species still reach these steps.
+        // ── Post-predict steps and annotation ────────────────────────────────────
+        // postpredict: all samples with a completed predict_results/*.gbk, whether
+        // produced in this run or a prior one. This is the source for all optional
+        // pre-annotate steps and for FUNANNOTATE_ANNOTATE itself.
         def postpredict = channel.fromPath(params.samples)
             .splitCsv(header: true)
             .map { row ->
@@ -885,20 +882,62 @@ workflow {
             .filter { out, asmid, _sp, _st, _lt, _bl, _hl, _tt -> !suppressSet.contains(asmid) }
             .filter { out, _asmid, _sp, _st, _lt, _bl, _hl, _tt -> file("${params.target}/${out}/predict_results/${out}.gbk").exists() }
 
+        // annotate_ready_ch threads through optional pre-annotate steps. Each optional
+        // step splits the channel into "needs to run" vs "already done", processes the
+        // former, then mixes the freshly-completed items back. FUNANNOTATE_ANNOTATE only
+        // fires once all requested optional steps are complete for a given sample.
+        // Joining ANTISMASH/INTERPRO/SIGNALP output back through postpredict reconstructs
+        // the metadata tuple while encoding the dependency edge in the channel DAG.
+        def annotate_ready_ch = postpredict
+
         if (params.run_antismash) {
-            ANTISMASH_RUN(postpredict.filter { out, _asmid, _sp, _st, _lt, _bl, _hl, _tt ->
+            def asDoneCheck = { String out ->
                 def asDir = file("${params.target}/${out}/antismash_local")
-                !(asDir.isDirectory() && asDir.list()?.any { it.endsWith('.json') || it.endsWith('.json.gz') })
-            })
+                asDir.isDirectory() && asDir.list()?.any { it.endsWith('.json') || it.endsWith('.json.gz') }
+            }
+            def as_todo = annotate_ready_ch.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt -> !asDoneCheck(out) }
+            def as_done = annotate_ready_ch.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt ->  asDoneCheck(out) }
+            ANTISMASH_RUN(as_todo)
+            def as_completed = ANTISMASH_RUN.out
+                .map { out, _files -> tuple(out, 'done') }
+                .join(postpredict)
+                .map { out, _flag, asmid, sp, st, lt, bl, hl, tt -> tuple(out, asmid, sp, st, lt, bl, hl, tt) }
+            annotate_ready_ch = as_completed.mix(as_done)
         }
+
         if (params.run_interpro) {
-            INTERPROSCAN_RUN(postpredict.filter { out, _asmid, _sp, _st, _lt, _bl, _hl, _tt ->
+            def ipr_todo = annotate_ready_ch.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt ->
                 !file("${params.target}/${out}/annotate_misc/iprscan.xml").exists()
-            })
+            }
+            def ipr_done = annotate_ready_ch.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt ->
+                file("${params.target}/${out}/annotate_misc/iprscan.xml").exists()
+            }
+            INTERPROSCAN_RUN(ipr_todo)
+            def ipr_completed = INTERPROSCAN_RUN.out
+                .map { out, _xml -> tuple(out, 'done') }
+                .join(postpredict)
+                .map { out, _flag, asmid, sp, st, lt, bl, hl, tt -> tuple(out, asmid, sp, st, lt, bl, hl, tt) }
+            annotate_ready_ch = ipr_completed.mix(ipr_done)
         }
+
         if (params.run_signalp) {
-            SIGNALP_RUN(postpredict.filter { out, _asmid, _sp, _st, _lt, _bl, _hl, _tt ->
+            def sp_todo = annotate_ready_ch.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt ->
                 !file("${params.target}/${out}/annotate_misc/signalp.results.txt").exists()
+            }
+            def sp_done = annotate_ready_ch.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt ->
+                file("${params.target}/${out}/annotate_misc/signalp.results.txt").exists()
+            }
+            SIGNALP_RUN(sp_todo)
+            def sp_completed = SIGNALP_RUN.out
+                .map { out, _txt -> tuple(out, 'done') }
+                .join(postpredict)
+                .map { out, _flag, asmid, sp, st, lt, bl, hl, tt -> tuple(out, asmid, sp, st, lt, bl, hl, tt) }
+            annotate_ready_ch = sp_completed.mix(sp_done)
+        }
+
+        if (params.run_annotate) {
+            FUNANNOTATE_ANNOTATE(annotate_ready_ch.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt ->
+                !file("${params.target}/${out}/annotate_results/${out}.gbk").exists()
             })
         }
     }
