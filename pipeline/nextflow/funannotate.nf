@@ -22,16 +22,19 @@ params.max_rnaseq_runs = 4       // --max_rnaseq_runs N: max paired-end SRA sets
 params.run_antismash   = false   // --run_antismash: run antiSMASH BGC detection before funannotate annotate
 params.run_interpro    = false   // --run_interpro: run InterProScan before funannotate annotate
 params.run_signalp     = false   // --run_signalp: run SignalP 6 (requires GPU node) before funannotate annotate
+params.run_update      = false    // --run_update true: run funannotate update (get UTRs and alt splicing from rnaseq)
 params.run_annotate    = true    // --run_annotate false: skip funannotate annotate (predict-only run)
+
 params.antismash_taxon = "fungi" // --antismash_taxon: antiSMASH --taxon value
 params.only_clean      = false   // --only_clean: stop after GENOME_CLEAN (skip prediction and all post-predict steps)
 params.run_sra_fetch   = true    // --run_sra_fetch false: skip SRA download + funannotate train
 params.skip_repeatmasker = false // --skip_repeatmasker: skip RepeatModeler+RepeatMasker steps
 params.pasa_mysql    = false   // --pasa_mysql: start a per-task MariaDB instance for PASA
 params.mariadb_sif   = "/bigdata/stajichlab/shared/lib/mariadb/mariadb.sif"
-params.mysql_datadir = "/bigdata/stajichlab/shared/mysql/db/mysql"      // path to template MySQL data dir (required with --pasa_mysql)
+params.mysql_datadir = "/bigdata/stajichlab/jstajich/mysql/db"      // path to template MySQL data dir (required with --pasa_mysql)
 params.pasa_conf_dir = "/rhome/jstajich/.pasa/pasa_conf/"      // path to dir with my.cnf + conf.txt (required with --pasa_mysql)
-
+params.max_intronlen = 3000 // --max_intronlen N: max intron length for funannotate train/predict (default 3k; set higher for plants/animals)
+params.min_intronlen = 10 // --min_intronlen N: min intron length for funannotate train/predict (default 10bp; set higher for yeasts perhaps and plants/animals)
 
 // Metadata tuple order used throughout:
 //   val(out), val(asmid), val(species), val(strain), val(locustag),
@@ -343,7 +346,7 @@ process SRA_FETCH {
         echo "[INFO] Combined \$NPAIRS read pairs for ${species_tag}"
 
         # Append provenance manifest.
-	mkdir -p "${launchDir}/rnaseq_reads"
+        mkdir -p "${launchDir}/rnaseq_reads"
         MANIFEST="${launchDir}/rnaseq_reads/rnaseq_manifest.tsv"
         if [ ! -f "\$MANIFEST" ]; then
             printf "species_tag\ttaxonid\taccessions\ttimestamp\n" > "\$MANIFEST"
@@ -408,33 +411,33 @@ process FUNANNOTATE_TRAIN {
     pasa_db_arg="--pasa_db sqlite"
     # ── Optional per-task MariaDB for PASA ────────────────────────────────────
     if [ "${params.pasa_mysql}" = "true" ]; then
-        RUNID=\$\$
-        MYSQL_SCRATCH=\$TMPDIR/mysql_\${RUNID}
-        mkdir -p \$MYSQL_SCRATCH/db \$MYSQL_SCRATCH/conf
-        rsync -a ${params.mysql_datadir}/mysql \$MYSQL_SCRATCH/db/ || \
-            { echo "ERROR: Failed to copy mysql data from ${params.mysql_datadir}" >&2; exit 1; }
-        cp ${params.pasa_conf_dir}/my.cnf \$MYSQL_SCRATCH/conf/my.cnf || \
-            { echo "ERROR: Failed to copy my.cnf" >&2; exit 1; }
+        MYSQL_SCRATCH=${params.target}/${out}/training/mysql_db
+        if [ ! -f \$MYSQL_SCRATCH/mysql/conf/my.cnf ]; then
+            echo "[INFO] Setting up temporary MariaDB for PASA at \$MYSQL_SCRATCH"
+            mkdir -p \$MYSQL_SCRATCH/db \$MYSQL_SCRATCH/conf
+            rsync -a ${params.mysql_datadir}/mysql \$MYSQL_SCRATCH/db/ || \
+                { echo "ERROR: Failed to copy mysql data from ${params.mysql_datadir}" >&2; exit 1; }
+            cp ${params.pasa_conf_dir}/my.cnf \$MYSQL_SCRATCH/conf/my.cnf || \
+                { echo "ERROR: Failed to copy my.cnf" >&2; exit 1; }
+        fi
         MYHOSTNAME=\$(hostname -s)
         PORT=\$(shuf -i3000-4999 -n1)
         export PASACONF=\$MYSQL_SCRATCH/conf/pasa-local-\${MYHOSTNAME}.config.txt
         cp ${params.pasa_conf_dir}/conf.txt \$PASACONF
         sed -i "s/^MYSQLSERVER.*\$/MYSQLSERVER=\${MYHOSTNAME}:\${PORT}/" \$PASACONF
         perl -i -p -e "s/port = \\d+/port = \${PORT}/" \$MYSQL_SCRATCH/conf/my.cnf
-        export SINGULARITY_BINDPATH=\$TMPDIR
+        # ──  may be unnecessary if overridden by -B option later? ── 
+        export SINGULARITY_BINDPATH=\$TMPDIR,\$MYSQL_SCRATCH/mysql_db 
         stop_mysqldb() { singularity instance stop mysqldb\${RUNID} 2>/dev/null || true; }
         trap "stop_mysqldb; exit 130" SIGHUP SIGINT SIGTERM
         trap "stop_mysqldb" EXIT
         module load singularity
         singularity instance start --writable-tmpfs \\
             -B \$MYSQL_SCRATCH/conf/my.cnf:/etc/mysql/my.cnf,\$MYSQL_SCRATCH/db/:/var/lib/mysql,\$MYSQL_SCRATCH/conf:/usr/conf \\
-            ${params.mariadb_sif} mysqldb\${RUNID} /usr/bin/mysqld_safe
-        pasa_db_arg="--pasa_db mysql --pasa_mysql_port \${PORT} --pasa_conf \${PASACONF}"
+            ${params.mariadb_sif} mysqldb_${asmid} /usr/bin/mysqld_safe
+        pasa_db_arg="--pasa_db mysql"
         sleep 5
     fi
-    echo "[DEBUG] PASACONF is \$PASACONF"
-    echo "[DEBUG] pasa_db_arg: \$pasa_db_arg"
-
     # ── Run funannotate train ─────────────────────────────────────────────────
     echo "[INFO] Running funannotate train for ${out}"
     funannotate train -i ${genome_fa} -o ${params.target}/${out} \\
@@ -443,8 +446,23 @@ process FUNANNOTATE_TRAIN {
         --cpus ${task.cpus} --memory ${task.memory.toGiga()}G \\
         --header_length ${header_length} \\
         --jaccard_clip --no-progress --min_coverage 4 \\
+        --max_intronlen ${params.max_intronlen} \\
         \$pasa_db_arg
-        
+
+    # ── Remove large intermediates not needed for predict or update ─────────────
+    # Keeps: *.bam, *.bai, *.pasa.gff3, *.stringtie.gtf, *.transcripts.gff3,
+    #        *.trinity-GG.fasta, left/right.fq.gz, trimmomatic/trimmed_*.fastq.gz,
+    #        normalize/left.norm.fq, normalize/right.norm.fq
+    TRAINDIR="${params.target}/${out}/training"
+    echo "[INFO] Removing large training intermediates in \$TRAINDIR"
+    rm -rf "\$TRAINDIR/hisat2"
+    rm -rf "\$TRAINDIR/trinity_gg"
+    # find "\$TRAINDIR" -maxdepth 2 -name "*.sqlite"         -delete 2>/dev/null || true
+    # ind "\$TRAINDIR" -maxdepth 2 -name "*.sqlite-journal" -delete 2>/dev/null || true
+    # rm -rf "\$TRAINDIR/mysql_db"
+    echo "[INFO] Training cleanup complete for ${out}"
+    stop_mysqldb
+    echo "[INFO] stopped mysql"
     """
 
     stub:
@@ -505,12 +523,13 @@ process FUNANNOTATE_PREDICT {
         --AUGUSTUS_CONFIG_PATH \$AUGUSTUS_CONFIG_PATH -w codingquarry:0 \\
         --min_training_models 30 --tmpdir \$TMPDIR --SeqCenter ${params.seqcenter} \\
         --keep_no_stops --header_length ${header_length} --protein_evidence ${params.proteins} \\
+	--max_intronlen ${params.max_intronlen} --min_intronlen ${params.min_intronlen} \\
         --tbl2asn "\$TBL2ASN_PARAMS" --table ${transl_table}
 
     EXPECTED_GBK="${out}/predict_results/${out}.gbk"
     if [ ! -f "\$EXPECTED_GBK" ]; then
         echo "ERROR: funannotate predict did not produce expected GBK: \$EXPECTED_GBK" >&2
-        exit 1
+	exit 1
     fi
     mv ${out}/predict_misc/ab_initio_parameters ${out}
     rm -rf ${out}/predict_misc
@@ -664,10 +683,6 @@ process FUNANNOTATE_ANNOTATE {
     tuple val(out), path("${out}/**")
 
     script:
-    def ipr     = file("${params.target}/${out}/annotate_misc/iprscan.xml")
-    def iprArg  = ipr.exists()     ? "--iprscan ${ipr}"    : ""
-    def sp      = file("${params.target}/${out}/annotate_misc/signalp.results.txt")
-    def spArg   = sp.exists()      ? "--signalp ${sp}"     : ""
     def antiSm    = file("${params.target}/${out}/antismash_local/${out}.gbk")
     def antiSmArg = antiSm.exists() ? "--antismash ${antiSm}" : ""
     """
@@ -680,19 +695,20 @@ process FUNANNOTATE_ANNOTATE {
     export FUNANNOTATE_DB=${params.funannotate_db}
     TMPDIR=\${SCRATCH:-/tmp}
 
-    funannotate annotate -i ${params.target}/${out} \\
+    funannotate annotate -i ${params.target}/${out} -o ${out} \\
         --species "${species}" --strain "${strain}" \\
         --busco_db ${busco_lineage} --rename ${locustag} \\
         --sbt ${params.sbt_template} \\
         --header_length ${header_length} \\
-        ${iprArg} ${spArg} ${antiSmArg} \\
+        ${antiSmArg} \\
         --cpu ${task.cpus} --tmpdir \$TMPDIR
 
-    EXPECTED_GBK="${out}/annotate_results/${out}.gbk"
+    EXPECTED_GBK="${params.target}/${out}/annotate_results/${out}.gbk"
     if [ ! -f "\$EXPECTED_GBK" ]; then
         echo "ERROR: funannotate annotate did not produce expected GBK: \$EXPECTED_GBK" >&2
         exit 1
     fi
+
     """
 
     stub:
@@ -950,10 +966,132 @@ workflow {
             annotate_ready_ch = sp_completed.mix(sp_done)
         }
 
+        if (params.run_update) {
+            if (params.run_sra_fetch) {
+                // UPDATE runs from predict results in parallel with antismash/interpro/signalp.
+                // Reads are joined from SRA_FETCH (storeDir-cached, so prior-run reads are reused).
+                // The join on upd_signal gates annotate_ready_ch so ANNOTATE waits for UPDATE.
+                def upd_input = postpredict
+                    .map { out, asmid, species, strain, locustag, busco, hlen, ttable ->
+                        def species_tag = species.replaceAll(/\s+/, '_')
+                        tuple(species_tag, out, asmid, species, strain, locustag, busco, hlen, ttable)
+                    }
+                    .combine(SRA_FETCH.out.reads, by: 0)
+                    .map { _st, out, asmid, species, strain, locustag, busco, hlen, ttable, r1, r2 ->
+                        tuple(out, asmid, species, strain, locustag, busco, hlen, ttable, r1, r2)
+                    }
+                def upd_todo = upd_input.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt, _r1, _r2 ->
+                    !file("${params.target}/${out}/update_results/${out}.gbk").exists()
+                }
+                def upd_done_signal = upd_input
+                    .filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt, _r1, _r2 ->
+                        file("${params.target}/${out}/update_results/${out}.gbk").exists()
+                    }
+                    .map { out, _a, _sp, _st, _lt, _bl, _hl, _tt, _r1, _r2 -> tuple(out, 'upd') }
+                FUNANNOTATE_UPDATE(upd_todo)
+                def upd_signal = FUNANNOTATE_UPDATE.out
+                    .map { out, _a, _sp, _st, _lt, _bl, _hl, _tt -> tuple(out, 'upd') }
+                    .mix(upd_done_signal)
+                annotate_ready_ch = annotate_ready_ch
+                    .join(upd_signal)
+                    .map { out, asmid, sp, st, lt, bl, hl, tt, _flag -> tuple(out, asmid, sp, st, lt, bl, hl, tt) }
+            } else {
+                log.warn "run_update=true but run_sra_fetch=false; funannotate update skipped (no reads available)"
+            }
+        }
+
         if (params.run_annotate) {
             FUNANNOTATE_ANNOTATE(annotate_ready_ch.filter { out, _a, _sp, _st, _lt, _bl, _hl, _tt ->
                 !file("${params.target}/${out}/annotate_results/${out}.gbk").exists()
             })
         }
     }
+}
+
+process FUNANNOTATE_UPDATE {
+    tag "$out"
+
+    cpus   16
+    memory '96 GB'
+    time   '48h'
+
+    input:
+    tuple val(out), val(asmid), val(species), val(strain), val(locustag),
+          val(busco_lineage), val(header_length), val(transl_table),
+          path(r1), path(r2)
+
+    output:
+    tuple val(out), val(asmid), val(species), val(strain), val(locustag),
+          val(busco_lineage), val(header_length), val(transl_table)
+
+    script:
+    def pasa_db_arg = "--pasa_db sqlite"
+    """
+    # ── Skip if no reads (empty marker file from SRA_FETCH) ──────────────────
+    if [ ! -s "${r1}" ]; then
+        echo "[INFO] No RNAseq reads for ${out}, skipping funannotate update"
+        exit 0
+    fi
+
+    source /etc/profile.d/modules.sh 2>/dev/null || true
+    module load miniconda3
+    eval "\$(conda shell.bash hook)"
+    module load funannotate
+
+    export AUGUSTUS_CONFIG_PATH=${params.augustus_config}
+    export FUNANNOTATE_DB=${params.funannotate_db}
+    TMPDIR=\${SCRATCH:-/tmp}
+    export PASACONF=""
+    pasa_db_arg="--pasa_db sqlite"
+    # ── Optional per-task MariaDB for PASA ────────────────────────────────────
+    if [ "${params.pasa_mysql}" = "true" ]; then
+        MYSQL_SCRATCH=${params.target}/${out}/training/mysql_db
+        if [ ! -f \$MYSQL_SCRATCH/conf/my.cnf ]; then
+            echo "[INFO] Setting up temporary MariaDB for PASA at \$MYSQL_SCRATCH"
+            mkdir -p \$MYSQL_SCRATCH/db \$MYSQL_SCRATCH/conf
+            rsync -a ${params.mysql_datadir}/mysql \$MYSQL_SCRATCH/db/ || \
+                { echo "ERROR: Failed to copy mysql data from ${params.mysql_datadir}" >&2; exit 1; }
+            cp ${params.pasa_conf_dir}/my.cnf \$MYSQL_SCRATCH/conf/my.cnf || \
+                { echo "ERROR: Failed to copy my.cnf" >&2; exit 1; }
+        fi
+        MYHOSTNAME=\$(hostname -s)
+        PORT=\$(shuf -i3000-4999 -n1)
+        export PASACONF=\$MYSQL_SCRATCH/conf/pasa-local-\${MYHOSTNAME}.config.txt
+        cp ${params.pasa_conf_dir}/conf.txt \$PASACONF
+        sed -i "s/^MYSQLSERVER.*\$/MYSQLSERVER=\${MYHOSTNAME}:\${PORT}/" \$PASACONF
+        perl -i -p -e "s/port = \\d+/port = \${PORT}/" \$MYSQL_SCRATCH/conf/my.cnf
+        export SINGULARITY_BINDPATH=\$TMPDIR,\$MYSQL_SCRATCH/db
+        stop_mysqldb() { singularity instance stop mysqldb\${PORT} 2>/dev/null || true; }
+        trap "stop_mysqldb; exit 130" SIGHUP SIGINT SIGTERM
+        trap "stop_mysqldb" EXIT
+        module load singularity
+        singularity instance start --writable-tmpfs \\
+            -B \$MYSQL_SCRATCH/conf/my.cnf:/etc/mysql/my.cnf,\$MYSQL_SCRATCH/db/:/var/lib/mysql,\$MYSQL_SCRATCH/conf:/usr/conf \\
+            ${params.mariadb_sif} mysqldb_${asmid} /usr/bin/mysqld_safe
+        pasa_db_arg="--pasa_db mysql"
+        sleep 5
+    fi
+
+    echo "[INFO] Running funannotate update for ${out}"
+    funannotate update -i ${params.target}/${out} \\
+        --left ${r1} --right ${r2} \\
+        --cpus ${task.cpus} \\
+        \$pasa_db_arg
+    stop_mysqldb
+    echo "[INFO] stopped mysql"
+    EXPECTED="${params.target}/${out}/update_results/${out}.gbk"
+    if [ ! -f "\$EXPECTED" ]; then
+        echo "ERROR: funannotate update did not produce expected GBK: \$EXPECTED" >&2
+        exit 1
+    fi
+    """
+
+    stub:
+    """
+    echo "[STUB] FUNANNOTATE_UPDATE stub for ${out} (r1=${r1}, r2=${r2})"
+    mkdir -p ${params.target}/${out}/update_results
+    touch ${params.target}/${out}/update_results/${out}.tbl
+    touch ${params.target}/${out}/update_results/${out}.gbk
+    touch ${params.target}/${out}/update_results/${out}.gff3
+    """
 }
